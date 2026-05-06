@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const T = {
@@ -9,29 +9,34 @@ const T = {
   mono: "'SF Mono', 'Fira Code', monospace",
 };
 
+// Song type colours
+const TYPE_STYLES = {
+  Praise:  { color: "#f59e0b", bg: "rgba(245,158,11,0.12)",  border: "rgba(245,158,11,0.35)"  },
+  Worship: { color: "#60a5fa", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.35)"  },
+  Anthem:  { color: "#a78bfa", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.35)" },
+};
+const TYPE_ORDER = ["Praise", "Worship", "Anthem"];
+
 // ─── PIN ──────────────────────────────────────────────────────────────────────
 const CORRECT_PIN = "1603";
-const PIN_KEY = "setlist-unlocked";
-
-// ─── Storage ──────────────────────────────────────────────────────────────────
-const SONGS_KEY = "setlist-songs";
+const PIN_KEY     = "setlist-unlocked";
+const SONGS_KEY   = "setlist-songs";
 const SETLIST_KEY = "setlist-active";
 
 function loadData(key, fallback) {
-  try {
-    const v = localStorage.getItem(key);
-    return v ? JSON.parse(v) : fallback;
-  } catch { return fallback; }
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch { return fallback; }
 }
 function saveData(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { console.error(e); }
 }
 
 // ─── Default songs ────────────────────────────────────────────────────────────
-const DEFAULT_SONGS = [{"id":3847788,"title":"Agnus Dei","key":"D","tempo":"","note":"","chart":"Verse 1\n\n| 1 |\n\nChorus\n\n| 1 |\n\n| 4 | 1 | 6m | 5 |\n\n| 4 |"},{"id":2812383,"title":"All Hail King Jesus","key":"E","tempo":"","note":"","chart":"Verse\n\n| 1 | 6m | 5 | 4 |\n\nPre-Chorus\n\n| 2m | 6m | 5 |\n\n| 1 | 3m | 4 |\n\n| 2m | 6m | 5 |\n\n| 1 | 1/3 | 4 |\n\nChorus\n\n| 1 | 1sus |\n\n| 1 | 1sus | 3m | 6m |\n\n| 4 |\n\n| 1/3 | 5 | 1 |\n\nChannel 1\n\n| 1 | 1sus | 1 | 1sus |\n\nVerse 3\n\n| 1 | 6m | 5 | 4 |\n\nPre-Chorus 2\n\n| 2m | 6m | 5 |\n\n| 1 | 1/3 | 4 |\n\n| 2m | 6m | 5 |\n\n| 1 | 1/3 | 4 |\n\nChorus (Alt)\n\n| 6m | 4 |\n\n| 1/3 | 5 |\n\n| 6m | 4 |\n\n| 1/3 | 4 |\n\nChannel 2\n\n| 5 | 6m | 4 | 1sus | 1 |\n\n| 5 | 6m | 4 | 1sus | 1 |\n\nBridge\n\n| 5 | 6m | 4 | 1 | 1/3 |\n\n| 5 | 6m | 4 | 1 |\n\n| 5 | 6m | 4 | 1 |\n\n| 5 | 6m | 4 |\n\n| 1 | 5 | 6m | 4 | 1 | 5 | 6m | 4 |"},{"id":5390733,"title":"Because Of Christ","key":"D","tempo":"","note":"","chart":"Verse\n\n| 1 | 1/3 | 1 |\n\n| 5 | 6m |\n\n| 4 | 1 |\n\n| 6m | 5 |\n\nChorus\n\n| 4 |\n\n| 1sus | 1 |\n\n| 1/5 | 5 |\n\n| 6m | 5 |\n\nTag\n\n| 4 | 5 | (6m for ending) |\n\nBridge\n\n| 1 | 4/1 | 1 |\n\n| 4/1 | 1 |\n\n| 6m/1 | 5/1 |\n\nBridge 2\n\n| 1 | 2m | 6m |\n\n| 4 | 1 |\n\n| 6m | 5 |\n\nBridge Alt\n\n| 1/3 | 2m | 6m |\n\n| 4 | 1 |\n\n| 6m | 5 |"},{"id":716362,"title":"Bless God","key":"D","tempo":"","note":"","chart":"Verse\n\n| 1 | 2m | 4 | 1 | 6m | 5 |\n\nChorus\n\n| 1 | 2m | 4 |\n\n| 6m | 4 | 5 |\n\nBridge\n\n| 1/3 | 2m | 4 | 6m | 5 |"},{"id":4535294,"title":"Blood Of Jesus","key":"G","tempo":"","note":"","chart":"verse\n\n| 1 | 4/1 |\n\n| 5 | 4 | 1 |\n\n| 1 | 4/1 | 1 |\n\n| 6m | 5 | 1 |\n\nchorus\n\n| 4 | 1 | 5 |\n\n| 6m | 4 |\n\n| 1 | 5 |\n\nbridge\n\n| 1 | 5 | 6m | 4 |"},{"id":3375914,"title":"Center","key":"A","tempo":"","note":"","chart":"verse\n\n| 1 | 4 | 6m | 4 |\n\nchorus\n\n| 4 | 6m | 1 | 5 |\n\n| 4 | 6m | 1 | 5 |\n\n| 3m | 6m | 4 | 5 |\n\ntag\n\n| 6m | 3m | 4 | 5 |\n\nbridge\n\n| 4 | 5 | 6m | 3m |\n\ntag (alt)\n\n| 4 | 5 | 6m | 3m |\n\nbridge (alt)\n\n| 4 | 5 | 6m | 1 |\n\n| 4 | 5 | 6m | 5/7 |"},{"id":8199008,"title":"FREE!","key":"A","tempo":"","note":"","chart":"Verse\n\n| Am | Dm | F | E/B |\n\nPre Chorus\n\n| Am | Dm | F | E/G# |\n\nChorus\n\n| F | Dm | C | E |\n\nTurn Around\n\n| Am | Dm | F | E/B |\n\nBridge\n\nAm"},{"id":2724960,"title":"Fall Like Rain","key":"E","tempo":"","note":"","chart":"Verse\n\n| 1 | 5/7 | 6 | 4 |\n\nverse 2\n\n| 1 | 5/7 | 6 | 4 |\n\n| 1/3 | 5/7 | 6m | 5 | 4 |\n\n| 6m | 5 | 4 |\n\nChorus\n\n| 1 | 5/7 | 6 | 1/3 |\n\nBridge\n\n| 1 | 2 | 1/3 | 4 |"},{"id":2861416,"title":"Give Me Jesus","key":"F","tempo":"","note":"","chart":"verse\n\n| 1 | 4/6 | 2 | 1/3 | 4 |\n\nchorus\n\n| 1 | 5 | 2 | 6 | 4 | 5 |\n\nbridge\n\n| 1/3 | 4 | 6 | 5 |"},{"id":6169345,"title":"Gratitude","key":"D","tempo":"","note":"","chart":"Verse\n\n| 1 | 6m | 5 | 4 |\n\nChorus\n\n| 1 | 5 |\n\n| 4 | 6m | 5 | 1 |\n\nBridge\n\n| 1 |\n\n| 1 | 5 | 4 |\n\n| 1 | 5 |\n\n| 1 | 5 | 4 |\n\n| 6m | 5 |\n\nAlt Chorus\n\n| 1 | 5m | 4 | 4m |"},{"id":2334879,"title":"Great Are You Lord","key":"C","tempo":"","note":"","chart":"verse\n\n| 4 | 6m | 5 |\n\nchorus\n\n| 4 | 6m | 5 |\n\nbridge\n\n| 1 | 4 | 4 | 1 |"},{"id":1736063,"title":"Heart of Worship","key":"","tempo":"","note":"","chart":"Verse\n\n| 1 | 5 | 2m | 5 |\n\nPre Chorus\n\n| 2m | 1/3 | 5 |\n\nChorus\n\n| 1 | 5/7 |\n\n| 2m | 4 | 5 | 1 |"},{"id":3866966,"title":"Holy Forever","key":"F","tempo":"","note":"","chart":"Intro\n\n| 4 | 6m | 5 |\n\n| 1/3 | 6m | 5 |\n\nVerse\n\n| 1 | 4 | 1 |\n\n| 6m | 5 | 4 |\n\nPre Chorus\n\n| 4 | 6m | 5 |\n\n| 6m | 4 |\n\n| 4 | 6m | 5 |\n\n| 6m | 2m |\n\nChorus\n\n| 4 | 6m | 5 |\n\n| 1/3 | 6m |\n\n| 2m | 5 |\n\n| 1 | 1sus | 1 |\n\nTag\n\n| 2m | 5 |\n\n| 1 | 1sus | 1 |"},{"id":1203969,"title":"I Speak Jesus","key":"D","tempo":"","note":"","chart":"verse\n\n| 1 | 6m | 4 | 1 |\n\nchorus\n\n| 5 | 1 | 4 | 1 |\n\nbridge\n\n| 1 |\n\n| 6m |\n\n| 4 |\n\n| 1 |"},{"id":7595253,"title":"I Thank God","key":"C","tempo":"","note":"","chart":"verse\n\n| 1 | 4 |\n\npre chorus\n\n| 5 | 6m | 4 | 1 |\n\n| 5 | 6m | 4 |\n\nchorus\n\n| 1 | 2m | 1 | 4 |\n\n| 6m | 4 |\n\n(end chorus on 1)\n\nbridge\n\n| 1 |\n\n| 5 | 6m | 4 | 1 |"},{"id":5798964,"title":"I Will Exalt You","key":"B","tempo":"","note":"","chart":"verse\n\n| 5/7 | 1 | 1/3 | 4 |\n\n| 5sus | 1 |\n\nchorus\n\n| 5 | 2m | 5/7 | 1 |\n\n| 5 | 2m | 1 | 4 | 6m | 5 |"},{"id":4935454,"title":"Inhabit","key":"F","tempo":"","note":"","chart":"verse\n\n| 1 | 4 | 6m | 5 | 4 |\n\nchorus\n\n| 1 | 4 | 5 | 4 |\n\nohs\n\n| 2m |\n\n| 6m |\n\n| 4 |\n\nbridge\n\n| 1 | 1sus | 6m | 4 |\n\nAlt\n\n| 1 | 2m | 6m | 4 |\n\nPost chorus bridge\n\n| 1 | 1/3 | 6m | 4 |"},{"id":9543310,"title":"Jesus Have It All","key":"F","tempo":"","note":"","chart":"verse\n\n| 1 | 5 | 2m | 4 | 1 |\n\nchorus\n\n| 4 | 6m | 5 | 2m |\n\n| 4 | 6m | 5 | 4 |\n\nbridge\n\n| 4 | 6m | 5 | 2m |"},{"id":9198043,"title":"Lord Send Revival","key":"D","tempo":"","note":"","chart":"Verse / Chorus / Bridge\n\n| 4 | 1 | 5 |"},{"id":5525138,"title":"Make Room","key":"F","tempo":"","note":"","chart":"verse / chorus / bridge\n\n| 1 | 5 | 2m | 4 |"},{"id":4788614,"title":"Name Above All Names","key":"D","tempo":"","note":"","chart":"Verse\n\n| 4 | 1 | 5 x3 |\n\n| 6 | 6m | 5 |\n\nChorus\n\n| 1 | 4 | 6m | 5 |\n\nBridge 1\n\n| 4 | 6m | 1 | 3 |\n\n| 4 | 6m | 1 | 5 |\n\nBridge 2\n\n| 1 | 4 | 6m | 5 |\n\n| 1 | 4 |"},{"id":8174699,"title":"No One Else (Tear Down The Idols)","key":"F","tempo":"","note":"","chart":"Verse\n\n| 1 | 2m | 4 | 5sus | 5 |\n\nChorus\n\n| 1/3 | 4 | 5 |\n\nBridge\n\n| 4 | 5 | 6m | 5 (passing 1/3) |\n\nAlt chorus\n\n| 1 | 2m/1 |\n\n| 1/3 | 4 | 5 |"},{"id":8102927,"title":"No One Like The Lord","key":"E","tempo":"","note":"","chart":"Verse\n\n| 6m | 4 | 1 | 3m |\n\n| 6m | 2m | 1 | 5 |\n\nChorus\n\n| 6m | 5/7 | 1 | 2m | 4 |\n\n| 5 | 6m |\n\n| 6m | 5/7 | 1 | 2m | 4 |\n\n| 5 | 6m |\n\nBridge\n\n| 6m |\n\n| 4 | 5 | 6m |\n\n| 6m |\n\n| 4 | 5 | 6m |\n\nBridge (Alt 1)\n\n| 6m | 1 |\n\n| 4 | 5 | 6m |\n\n| 2 | 1 |\n\n| 4 | 5 | 6m |\n\nChorus (Alt 1)\n\n| 4 | 1 | 4 |\n\n| 5 | 6m |\n\n| 4 | 5 | 6m | 1 | 4 |\n\n| 5 | 6m |\n\nOutro\n\n| 4 | 2 |\n\nBridge (Alt 2)\n\n| 6m | 1 |\n\n| 2 | 4 |\n\nTag\n\n| 4 | 5 | 6m |"},{"id":3242609,"title":"O Praise the Name","key":"G","tempo":"","note":"","chart":"chorus\n\n| 1 | 4 | 1 | 6 | 5 |\n\n| 1/3 | 4 | 6 | 5 | 4 | 1 |"},{"id":3323754,"title":"Open the eyes of my heart","key":"","tempo":"","note":"","chart":"Verse\n\n| 1 | 5 | 2m | 1 |\n\nChorus\n\n| 5 | 4 |\n\n| 1 | 5 |\n\n| 6m | 4 |\n\n| 1 | 5 |\n\nTags\n\n| 1 |\n\n| 5 |\n\n| 2m |\n\n| 1 |"},{"id":166542,"title":"Thank God I'm Free","key":"E","tempo":"","note":"","chart":"Turn around\n\n| 1 |\n\n| 6 | 4 |\n\nVerse\n\n| 1/3 | 4 | 1 |\n\n| 6m | 5 | 4 |\n\nchorus\n\n| 1/3 | 4 | 1 |\n\n| 6m | 5 | 4 |\n\nTurn\n\n| 6m | 5 | 4 |\n\nBridge 1\n\n| 1 | 4/1 |\n\nBridge 2\n\n| 5/7 | 1 | 4 |"},{"id":7544044,"title":"Til The Walls Come Down","key":"D","tempo":"","note":"","chart":"Verse\n\n| 6 | 4 | 1 | 3 |\n\nBridge\n\n| 6 |\n\n| 4 | 6m | 5 | 2m | 1 |"},{"id":442544,"title":"Washed","key":"D","tempo":"","note":"","chart":"Intro\n\n| 1/3 | 4 | 5/7 | 6m |\n\nVerse\n\n| 1/3 | 4 | 5/7 | 6m |\n\n| 1/3 | 4 | 5/7 | 6m |\n\n| 2m | 4sus |\n\nChorus\n\n| 1 | 4 | 6m | 5 |\n\nBridge\n\n| 1 | 4 | 6m | 4 |"},{"id":634525,"title":"What A God","key":"G","tempo":"","note":"","chart":"Verse\n\n| 6m | 5 |\n\n| 6m | 5 |\n\n| 6m | 5 |\n\n| 4 | 1/3 | 5 |\n\nChorus\n\n| 4 | 5 | 6m | 1/3 |\n\nBridge\n\n| 4 | 5 | 6m | 1/3 |"},{"id":6619951,"title":"What a beautiful name","key":"D","tempo":"","note":"","chart":"Chorus\n\n| 1 | 5 |\n\n| 6m | 5 | 4 |\n\n| 1/3 | 5 |\n\n| 6m | 5 | 4 |\n\nBridge\n\n| 4 | 5 | 6m | 1/3 |\n\n| 4 | 5 | 6m | 5 |"},{"id":5154995,"title":"Who Else","key":"G","tempo":"","note":"","chart":"verse\n\n| 1 | 5 | 6m | 5 | 4 |\n\nchorus\n\n| 1 | 2m | 6m | 4 |\n\nbridge\n\n| 4 | 5 | 6m | 1 | 5 |"}];
+const DEFAULT_SONGS = [{"id":3847788,"title":"Agnus Dei","key":"D","tempo":"","note":"","type":"Worship","chart":"Verse 1\n\n| 1 |\n\nChorus\n\n| 1 |\n\n| 4 | 1 | 6m | 5 |\n\n| 4 |"},{"id":2812383,"title":"All Hail King Jesus","key":"E","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| 1 | 6m | 5 | 4 |\n\nPre-Chorus\n\n| 2m | 6m | 5 |\n\n| 1 | 3m | 4 |\n\nChorus\n\n| 1 | 1sus |\n\n| 1 | 1sus | 3m | 6m |\n\n| 4 |\n\n| 1/3 | 5 | 1 |\n\nBridge\n\n| 5 | 6m | 4 | 1 | 1/3 |\n\n| 5 | 6m | 4 | 1 |\n\n| 1 | 5 | 6m | 4 |"},{"id":5390733,"title":"Because Of Christ","key":"D","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 1/3 | 1 |\n\n| 5 | 6m |\n\n| 4 | 1 |\n\n| 6m | 5 |\n\nChorus\n\n| 4 |\n\n| 1sus | 1 |\n\n| 1/5 | 5 |\n\n| 6m | 5 |\n\nBridge\n\n| 1 | 4/1 | 1 |\n\n| 6m/1 | 5/1 |"},{"id":716362,"title":"Bless God","key":"D","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| 1 | 2m | 4 | 1 | 6m | 5 |\n\nChorus\n\n| 1 | 2m | 4 |\n\n| 6m | 4 | 5 |\n\nBridge\n\n| 1/3 | 2m | 4 | 6m | 5 |"},{"id":4535294,"title":"Blood Of Jesus","key":"G","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 4/1 |\n\n| 5 | 4 | 1 |\n\n| 6m | 5 | 1 |\n\nchorus\n\n| 4 | 1 | 5 |\n\n| 6m | 4 |\n\n| 1 | 5 |\n\nbridge\n\n| 1 | 5 | 6m | 4 |"},{"id":3375914,"title":"Center","key":"A","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 4 | 6m | 4 |\n\nchorus\n\n| 4 | 6m | 1 | 5 |\n\n| 3m | 6m | 4 | 5 |\n\nbridge\n\n| 4 | 5 | 6m | 3m |"},{"id":8199008,"title":"FREE!","key":"A","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| Am | Dm | F | E/B |\n\nPre Chorus\n\n| Am | Dm | F | E/G# |\n\nChorus\n\n| F | Dm | C | E |\n\nBridge\n\nAm"},{"id":2724960,"title":"Fall Like Rain","key":"E","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 5/7 | 6 | 4 |\n\nChorus\n\n| 1 | 5/7 | 6 | 1/3 |\n\nBridge\n\n| 1 | 2 | 1/3 | 4 |"},{"id":2861416,"title":"Give Me Jesus","key":"F","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 4/6 | 2 | 1/3 | 4 |\n\nchorus\n\n| 1 | 5 | 2 | 6 | 4 | 5 |\n\nbridge\n\n| 1/3 | 4 | 6 | 5 |"},{"id":6169345,"title":"Gratitude","key":"D","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 6m | 5 | 4 |\n\nChorus\n\n| 1 | 5 |\n\n| 4 | 6m | 5 | 1 |\n\nBridge\n\n| 1 | 5 | 4 |\n\n| 6m | 5 |"},{"id":2334879,"title":"Great Are You Lord","key":"C","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 4 | 6m | 5 |\n\nchorus\n\n| 4 | 6m | 5 |\n\nbridge\n\n| 1 | 4 | 4 | 1 |"},{"id":1736063,"title":"Heart of Worship","key":"","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 5 | 2m | 5 |\n\nPre Chorus\n\n| 2m | 1/3 | 5 |\n\nChorus\n\n| 1 | 5/7 |\n\n| 2m | 4 | 5 | 1 |"},{"id":3866966,"title":"Holy Forever","key":"F","tempo":"","note":"","type":"Anthem","chart":"Verse\n\n| 1 | 4 | 1 |\n\n| 6m | 5 | 4 |\n\nChorus\n\n| 4 | 6m | 5 |\n\n| 1/3 | 6m |\n\n| 2m | 5 |\n\n| 1 | 1sus | 1 |\n\nTag\n\n| 2m | 5 |\n\n| 1 | 1sus | 1 |"},{"id":1203969,"title":"I Speak Jesus","key":"D","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 6m | 4 | 1 |\n\nchorus\n\n| 5 | 1 | 4 | 1 |\n\nbridge\n\n| 1 |\n\n| 6m |\n\n| 4 |\n\n| 1 |"},{"id":7595253,"title":"I Thank God","key":"C","tempo":"","note":"","type":"Praise","chart":"verse\n\n| 1 | 4 |\n\npre chorus\n\n| 5 | 6m | 4 | 1 |\n\n| 5 | 6m | 4 |\n\nchorus\n\n| 1 | 2m | 1 | 4 |\n\n| 6m | 4 |\n\nbridge\n\n| 1 |\n\n| 5 | 6m | 4 | 1 |"},{"id":5798964,"title":"I Will Exalt You","key":"B","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 5/7 | 1 | 1/3 | 4 |\n\n| 5sus | 1 |\n\nchorus\n\n| 5 | 2m | 5/7 | 1 |\n\n| 5 | 2m | 1 | 4 | 6m | 5 |"},{"id":4935454,"title":"Inhabit","key":"F","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 4 | 6m | 5 | 4 |\n\nchorus\n\n| 1 | 4 | 5 | 4 |\n\nbridge\n\n| 1 | 1sus | 6m | 4 |"},{"id":9543310,"title":"Jesus Have It All","key":"F","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 5 | 2m | 4 | 1 |\n\nchorus\n\n| 4 | 6m | 5 | 2m |\n\n| 4 | 6m | 5 | 4 |\n\nbridge\n\n| 4 | 6m | 5 | 2m |"},{"id":9198043,"title":"Lord Send Revival","key":"D","tempo":"","note":"","type":"Anthem","chart":"Verse / Chorus / Bridge\n\n| 4 | 1 | 5 |"},{"id":5525138,"title":"Make Room","key":"F","tempo":"","note":"","type":"Worship","chart":"verse / chorus / bridge\n\n| 1 | 5 | 2m | 4 |"},{"id":4788614,"title":"Name Above All Names","key":"D","tempo":"","note":"","type":"Anthem","chart":"Verse\n\n| 4 | 1 | 5 x3 |\n\n| 6 | 6m | 5 |\n\nChorus\n\n| 1 | 4 | 6m | 5 |\n\nBridge 1\n\n| 4 | 6m | 1 | 3 |\n\n| 4 | 6m | 1 | 5 |"},{"id":8174699,"title":"No One Else","key":"F","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 2m | 4 | 5sus | 5 |\n\nChorus\n\n| 1/3 | 4 | 5 |\n\nBridge\n\n| 4 | 5 | 6m | 5 |"},{"id":8102927,"title":"No One Like The Lord","key":"E","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| 6m | 4 | 1 | 3m |\n\n| 6m | 2m | 1 | 5 |\n\nChorus\n\n| 6m | 5/7 | 1 | 2m | 4 |\n\n| 5 | 6m |\n\nBridge\n\n| 6m |\n\n| 4 | 5 | 6m |"},{"id":3242609,"title":"O Praise the Name","key":"G","tempo":"","note":"","type":"Anthem","chart":"chorus\n\n| 1 | 4 | 1 | 6 | 5 |\n\n| 1/3 | 4 | 6 | 5 | 4 | 1 |"},{"id":3323754,"title":"Open the eyes of my heart","key":"","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 5 | 2m | 1 |\n\nChorus\n\n| 5 | 4 |\n\n| 1 | 5 |\n\n| 6m | 4 |\n\n| 1 | 5 |"},{"id":166542,"title":"Thank God I'm Free","key":"E","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| 1/3 | 4 | 1 |\n\n| 6m | 5 | 4 |\n\nchorus\n\n| 1/3 | 4 | 1 |\n\n| 6m | 5 | 4 |\n\nBridge\n\n| 5/7 | 1 | 4 |"},{"id":7544044,"title":"Til The Walls Come Down","key":"D","tempo":"","note":"","type":"Anthem","chart":"Verse\n\n| 6 | 4 | 1 | 3 |\n\nBridge\n\n| 6 |\n\n| 4 | 6m | 5 | 2m | 1 |"},{"id":442544,"title":"Washed","key":"D","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1/3 | 4 | 5/7 | 6m |\n\nChorus\n\n| 1 | 4 | 6m | 5 |\n\nBridge\n\n| 1 | 4 | 6m | 4 |"},{"id":634525,"title":"What A God","key":"G","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| 6m | 5 |\n\n| 4 | 1/3 | 5 |\n\nChorus\n\n| 4 | 5 | 6m | 1/3 |\n\nBridge\n\n| 4 | 5 | 6m | 1/3 |"},{"id":6619951,"title":"What a beautiful name","key":"D","tempo":"","note":"","type":"Anthem","chart":"Chorus\n\n| 1 | 5 |\n\n| 6m | 5 | 4 |\n\n| 1/3 | 5 |\n\n| 6m | 5 | 4 |\n\nBridge\n\n| 4 | 5 | 6m | 1/3 |\n\n| 4 | 5 | 6m | 5 |"},{"id":5154995,"title":"Who Else","key":"G","tempo":"","note":"","type":"Praise","chart":"verse\n\n| 1 | 5 | 6m | 5 | 4 |\n\nchorus\n\n| 1 | 2m | 6m | 4 |\n\nbridge\n\n| 4 | 5 | 6m | 1 | 5 |"}];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const KEYS = ["A","Bb","B","C","Db","D","Eb","E","F","F#","G","Ab"];
+const KEYS   = ["A","Bb","B","C","Db","D","Eb","E","F","F#","G","Ab"];
+const TYPES  = ["Praise","Worship","Anthem"];
 const CHROMATIC = ["C","Db","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
 const KEY_TO_IDX = {C:0,Db:1,"C#":1,D:2,Eb:3,"D#":3,E:4,F:5,"F#":6,Gb:6,G:7,Ab:8,"G#":8,A:9,Bb:10,"A#":10,B:11};
 const DEGREE_SEMITONES = {1:0,2:2,3:4,4:5,5:7,6:9,7:11};
@@ -43,7 +48,6 @@ function formatChart(text) {
     return { type: isHeader ? "header" : t.includes("|") ? "bars" : "text", content: t, id: i };
   });
 }
-
 function transposeCell(cell, key) {
   const root = KEY_TO_IDX[key];
   if (root === undefined) return cell;
@@ -51,14 +55,10 @@ function transposeCell(cell, key) {
     const s = DEGREE_SEMITONES[+deg];
     if (s === undefined) return match;
     const ch = CHROMATIC[(root + s) % 12] + (mod || "");
-    if (slash && bd) {
-      const bs = DEGREE_SEMITONES[+bd];
-      return bs === undefined ? ch + slash : ch + "/" + CHROMATIC[(root + bs) % 12] + (bm || "");
-    }
+    if (slash && bd) { const bs = DEGREE_SEMITONES[+bd]; return bs === undefined ? ch + slash : ch + "/" + CHROMATIC[(root + bs) % 12] + (bm || ""); }
     return ch;
   });
 }
-
 function transposeLine(line, key) {
   if (!line || !line.includes("|")) return line;
   return line.split("|").map((seg, i, arr) =>
@@ -66,6 +66,7 @@ function transposeLine(line, key) {
   ).join("|");
 }
 
+// ─── Shared styles ────────────────────────────────────────────────────────────
 const inputStyle = {
   width: "100%", background: T.bg, border: `1px solid ${T.border}`,
   borderRadius: 8, padding: "9px 12px", color: T.text, fontSize: 14,
@@ -74,7 +75,7 @@ const inputStyle = {
 
 // ─── PIN Screen ───────────────────────────────────────────────────────────────
 function PinScreen({ onUnlock }) {
-  const [pin, setPin] = useState("");
+  const [pin, setPin]   = useState("");
   const [shake, setShake] = useState(false);
 
   const handleDigit = (d) => {
@@ -82,69 +83,28 @@ function PinScreen({ onUnlock }) {
     const next = pin + d;
     setPin(next);
     if (next.length === 4) {
-      if (next === CORRECT_PIN) {
-        saveData(PIN_KEY, true);
-        onUnlock();
-      } else {
-        setShake(true);
-        setTimeout(() => { setPin(""); setShake(false); }, 600);
-      }
+      if (next === CORRECT_PIN) { saveData(PIN_KEY, true); onUnlock(); }
+      else { setShake(true); setTimeout(() => { setPin(""); setShake(false); }, 600); }
     }
   };
-
-  const handleDelete = () => setPin(p => p.slice(0, -1));
-
   const digits = [1,2,3,4,5,6,7,8,9,null,0,"⌫"];
 
   return (
-    <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: T.font }}>
+    <div style={{ minHeight: "100vh", background: T.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: T.font, paddingTop: "env(safe-area-inset-top)" }}>
       <div style={{ marginBottom: 32, textAlign: "center" }}>
         <div style={{ fontSize: 22, fontWeight: 600, color: T.text }}>Setlist</div>
         <div style={{ fontSize: 13, color: T.textMuted, marginTop: 4 }}>Enter PIN to continue</div>
       </div>
-
-      {/* Dots */}
       <div style={{ display: "flex", gap: 16, marginBottom: 40, animation: shake ? "shake 0.5s ease" : "none" }}>
-        {[0,1,2,3].map(i => (
-          <div key={i} style={{
-            width: 14, height: 14, borderRadius: "50%",
-            background: i < pin.length ? T.accent : "transparent",
-            border: `2px solid ${i < pin.length ? T.accent : T.border}`,
-            transition: "all 0.15s",
-          }} />
-        ))}
+        {[0,1,2,3].map(i => <div key={i} style={{ width: 14, height: 14, borderRadius: "50%", background: i < pin.length ? T.accent : "transparent", border: `2px solid ${i < pin.length ? T.accent : T.border}`, transition: "all 0.15s" }} />)}
       </div>
-
-      {/* Keypad */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 72px)", gap: 12 }}>
-        {digits.map((d, i) => (
-          d === null
-            ? <div key={i} />
-            : <button
-                key={i}
-                onClick={() => d === "⌫" ? handleDelete() : handleDigit(String(d))}
-                style={{
-                  width: 72, height: 72, borderRadius: "50%",
-                  background: d === "⌫" ? "transparent" : T.surface,
-                  border: `1px solid ${d === "⌫" ? "transparent" : T.border}`,
-                  color: T.text, fontSize: d === "⌫" ? 22 : 24,
-                  fontWeight: 500, cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "background 0.1s",
-                }}
-              >{d}</button>
-        ))}
+        {digits.map((d, i) => d === null
+          ? <div key={i} />
+          : <button key={i} onClick={() => d === "⌫" ? setPin(p => p.slice(0,-1)) : handleDigit(String(d))} style={{ width: 72, height: 72, borderRadius: "50%", background: d === "⌫" ? "transparent" : T.surface, border: `1px solid ${d === "⌫" ? "transparent" : T.border}`, color: T.text, fontSize: d === "⌫" ? 22 : 24, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{d}</button>
+        )}
       </div>
-
-      <style>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          20% { transform: translateX(-8px); }
-          40% { transform: translateX(8px); }
-          60% { transform: translateX(-6px); }
-          80% { transform: translateX(6px); }
-        }
-      `}</style>
+      <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }`}</style>
     </div>
   );
 }
@@ -152,24 +112,12 @@ function PinScreen({ onUnlock }) {
 // ─── ChartLine ────────────────────────────────────────────────────────────────
 function ChartLine({ line }) {
   if (!line.content) return <div style={{ height: 6 }} />;
-  if (line.type === "header") return (
-    <div style={{ fontSize: 10, letterSpacing: "0.12em", color: T.accent, fontFamily: T.mono, fontWeight: 600, marginTop: 14, marginBottom: 5, textTransform: "uppercase" }}>
-      {line.content}
-    </div>
-  );
+  if (line.type === "header") return <div style={{ fontSize: 10, letterSpacing: "0.12em", color: T.accent, fontFamily: T.mono, fontWeight: 600, marginTop: 14, marginBottom: 5, textTransform: "uppercase" }}>{line.content}</div>;
   if (line.type === "bars") {
     const cells = line.content.split("|").map(c => c.trim()).filter(Boolean);
     return (
       <div style={{ display: "flex", gap: 4, marginBottom: 4, flexWrap: "wrap" }}>
-        {cells.map((cell, i) => (
-          <div key={i} style={{
-            background: cell === "—" || cell === "-" ? "transparent" : T.accentBg,
-            border: `1px solid ${cell === "—" || cell === "-" ? T.borderLight : T.accentBorder}`,
-            borderRadius: 6, padding: "5px 6px", fontFamily: T.mono, fontSize: 13,
-            fontWeight: 700, color: cell === "—" || cell === "-" ? T.textFaint : T.accent,
-            minWidth: 28, textAlign: "center", flex: "1 1 auto", maxWidth: 60,
-          }}>{cell}</div>
-        ))}
+        {cells.map((cell, i) => <div key={i} style={{ background: cell==="—"||cell==="-"?"transparent":T.accentBg, border: `1px solid ${cell==="—"||cell==="-"?T.borderLight:T.accentBorder}`, borderRadius: 6, padding: "5px 6px", fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: cell==="—"||cell==="-"?T.textFaint:T.accent, minWidth: 28, textAlign: "center", flex: "1 1 auto", maxWidth: 60 }}>{cell}</div>)}
       </div>
     );
   }
@@ -178,18 +126,20 @@ function ChartLine({ line }) {
 
 // ─── SongCard ─────────────────────────────────────────────────────────────────
 function SongCard({ song, inSetlist, onToggle, onEdit }) {
+  const ts = TYPE_STYLES[song.type] || {};
   return (
     <div style={{ background: inSetlist ? T.accentBg : T.surface, border: `1px solid ${inSetlist ? T.accentBorder : T.border}`, borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
       <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => onToggle(song.id)}>
-        <div style={{ fontSize: 15, fontWeight: 500, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{song.title}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 15, fontWeight: 500, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{song.title}</div>
+          {song.type && <span style={{ fontSize: 10, color: ts.color, background: ts.bg, border: `1px solid ${ts.border}`, borderRadius: 4, padding: "1px 6px", fontFamily: T.mono, flexShrink: 0 }}>{song.type}</span>}
+        </div>
         <div style={{ fontSize: 12, color: T.textMuted, fontFamily: T.mono, marginTop: 2 }}>
           {song.key ? `Key of ${song.key}` : "No key"}{song.tempo ? ` · ${song.tempo}` : ""}{song.note ? ` · ${song.note}` : ""}
         </div>
       </div>
       <button onClick={() => onEdit(song)} style={{ background: "none", border: `1px solid ${T.border}`, borderRadius: 7, color: T.textMuted, padding: "5px 9px", cursor: "pointer", fontSize: 12, flexShrink: 0 }}>Edit</button>
-      <div onClick={() => onToggle(song.id)} style={{ width: 28, height: 28, borderRadius: "50%", background: inSetlist ? T.accent : T.border, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: inSetlist ? "#fff" : T.textMuted, flexShrink: 0, cursor: "pointer" }}>
-        {inSetlist ? "✓" : "+"}
-      </div>
+      <div onClick={() => onToggle(song.id)} style={{ width: 28, height: 28, borderRadius: "50%", background: inSetlist ? T.accent : T.border, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: inSetlist ? "#fff" : T.textMuted, flexShrink: 0, cursor: "pointer" }}>{inSetlist ? "✓" : "+"}</div>
     </div>
   );
 }
@@ -218,9 +168,10 @@ function SetlistItem({ song, index, total, onRemove, onMoveUp, onMoveDown }) {
 // ─── Song Modal ───────────────────────────────────────────────────────────────
 function SongModal({ existing, onClose, onSave, onDelete }) {
   const [title, setTitle] = useState(existing?.title || "");
-  const [key, setKey] = useState(existing?.key || "D");
+  const [key,   setKey]   = useState(existing?.key   || "D");
   const [tempo, setTempo] = useState(existing?.tempo || "");
-  const [note, setNote] = useState(existing?.note || "");
+  const [note,  setNote]  = useState(existing?.note  || "");
+  const [type,  setType]  = useState(existing?.type  || "Worship");
   const [chart, setChart] = useState(existing?.chart || "VERSE\n| 1 | 1 | 5 | 5 |\n| 6m | 6m | 4 | 4 |\n\nCHORUS\n| 1 | 5 | 6m | 4 |");
   const isEdit = !!existing;
   const lbl = { display: "block", fontSize: 12, color: T.textMuted, marginBottom: 5, marginTop: 14 };
@@ -230,7 +181,7 @@ function SongModal({ existing, onClose, onSave, onDelete }) {
       <div onClick={e => e.stopPropagation()} style={{ background: T.surface, borderRadius: "16px 16px 0 0", padding: "20px 20px 40px", width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", border: `1px solid ${T.border}`, borderBottom: "none" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ fontSize: 17, fontWeight: 600, color: T.text }}>{isEdit ? "Edit Song" : "Add Song"}</div>
-          {isEdit && <button onClick={() => { if (confirm("Delete this song?")) { onDelete(existing.id); onClose(); } }} style={{ background: "none", border: "none", color: "#e05252", fontSize: 13, cursor: "pointer" }}>Delete</button>}
+          {isEdit && <button onClick={() => { if (confirm("Delete this song?")) { onDelete(existing.id); onClose(); }}} style={{ background: "none", border: "none", color: "#e05252", fontSize: 13, cursor: "pointer" }}>Delete</button>}
         </div>
         <label style={lbl}>Song Title</label>
         <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. How Great Is Our God" style={inputStyle} />
@@ -246,13 +197,21 @@ function SongModal({ existing, onClose, onSave, onDelete }) {
             <input value={tempo} onChange={e => setTempo(e.target.value)} placeholder="72 BPM" style={inputStyle} />
           </div>
         </div>
+        <label style={lbl}>Type</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          {TYPES.map(t => {
+            const ts = TYPE_STYLES[t];
+            const sel = type === t;
+            return <button key={t} onClick={() => setType(t)} style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${sel ? ts.border : T.border}`, background: sel ? ts.bg : T.bg, color: sel ? ts.color : T.textMuted, fontSize: 13, cursor: "pointer", fontWeight: sel ? 600 : 400 }}>{t}</button>;
+          })}
+        </div>
         <label style={lbl}>Note</label>
         <input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Capo 2, half step down for Sam" style={inputStyle} />
         <label style={lbl}>Chord Chart</label>
         <textarea value={chart} onChange={e => setChart(e.target.value)} rows={10} style={{ ...inputStyle, resize: "vertical", fontFamily: T.mono, fontSize: 13, lineHeight: 1.75 }} />
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
           <button onClick={onClose} style={{ flex: 1, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 9, padding: "11px", color: T.textMuted, cursor: "pointer", fontSize: 14 }}>Cancel</button>
-          <button onClick={() => { if (!title.trim()) return; onSave({ title: title.trim(), key, tempo: tempo || "", note: note.trim(), chart }); onClose(); }} style={{ flex: 2, background: T.accent, border: "none", borderRadius: 9, padding: "11px", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+          <button onClick={() => { if (!title.trim()) return; onSave({ title: title.trim(), key, tempo: tempo||"", note: note.trim(), type, chart }); onClose(); }} style={{ flex: 2, background: T.accent, border: "none", borderRadius: 9, padding: "11px", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
             {isEdit ? "Save Changes" : "Add Song"}
           </button>
         </div>
@@ -262,25 +221,24 @@ function SongModal({ existing, onClose, onSave, onDelete }) {
 }
 
 // ─── Performance View ─────────────────────────────────────────────────────────
+// The ENTIRE screen slides as one unit — header, info, chart, nav all together.
 function PerformanceView({ songs, currentIndex, onSwipe, onExit, onUpdateSong }) {
-  const song = songs[currentIndex];
+  const song     = songs[currentIndex];
   const nextSong = songs[currentIndex + 1] || null;
 
-  const [liveKey, setLiveKey] = useState(song.key || "");
+  const [liveKey,      setLiveKey]      = useState(song.key || "");
   const [showKeyPicker, setShowKeyPicker] = useState(false);
-  const [chordMode, setChordMode] = useState(false);
-  const [editingNote, setEditingNote] = useState(false);
-  const [liveNote, setLiveNote] = useState(song.note || "");
+  const [chordMode,    setChordMode]    = useState(false);
+  const [editingNote,  setEditingNote]  = useState(false);
+  const [liveNote,     setLiveNote]     = useState(song.note || "");
 
-  // Swipe pan state
-  const [dragX, setDragX] = useState(0);
-  const [animating, setAnimating] = useState(false); // true while flying off screen
-  const [exitDir, setExitDir] = useState(0);         // -1 = fly left, +1 = fly right
-
-  const startX = useRef(null);
-  const startY = useRef(null);
-  const isHorizontal = useRef(false);
-  const scrollRef = useRef(null);
+  // Drag state — drives the whole-screen translateX
+  const [dragX,      setDragX]      = useState(0);
+  const [animating,  setAnimating]  = useState(false);
+  const startX      = useRef(null);
+  const startY      = useRef(null);
+  const isHoriz     = useRef(false);
+  const scrollRef   = useRef(null);
 
   useEffect(() => {
     setLiveKey(song.key || "");
@@ -299,69 +257,67 @@ function PerformanceView({ songs, currentIndex, onSwipe, onExit, onUpdateSong })
     chordMode && line.type === "bars" ? { ...line, content: transposeLine(line.content, liveKey) } : line
   );
 
-  // Touch handlers — track finger, pan the chart div
+  // Fire swipe with full-screen fly-off animation
+  const fireSwipe = useCallback((dir) => {
+    if (dir === -1 && currentIndex === 0) return;
+    if (dir === 1  && currentIndex === songs.length - 1) return;
+    setAnimating(true);
+    setDragX(dir < 0 ? window.innerWidth : -window.innerWidth);
+    setTimeout(() => onSwipe(dir), 260);
+  }, [currentIndex, songs.length, onSwipe]);
+
   const onTouchStart = e => {
     if (animating) return;
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
-    isHorizontal.current = false;
+    startX.current  = e.touches[0].clientX;
+    startY.current  = e.touches[0].clientY;
+    isHoriz.current = false;
   };
-
   const onTouchMove = e => {
     if (animating || startX.current === null) return;
     const dx = e.touches[0].clientX - startX.current;
     const dy = e.touches[0].clientY - startY.current;
-
-    // Lock axis on first move > 5px
-    if (!isHorizontal.current && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
-    if (!isHorizontal.current) {
-      isHorizontal.current = Math.abs(dx) > Math.abs(dy);
-    }
-    if (!isHorizontal.current) return; // vertical scroll, ignore
-
-    e.preventDefault(); // stop page scroll while swiping horizontally
-    // Resist at edges
-    const atLeft = currentIndex === 0 && dx > 0;
-    const atRight = currentIndex === songs.length - 1 && dx < 0;
-    const resistance = 0.25;
-    setDragX(atLeft || atRight ? dx * resistance : dx);
+    if (!isHoriz.current && Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+    if (!isHoriz.current) { isHoriz.current = Math.abs(dx) > Math.abs(dy); }
+    if (!isHoriz.current) return;
+    e.preventDefault();
+    const atEdge = (currentIndex === 0 && dx > 0) || (currentIndex === songs.length - 1 && dx < 0);
+    setDragX(atEdge ? dx * 0.2 : dx);
   };
-
   const onTouchEnd = () => {
     if (animating || startX.current === null) return;
-    const threshold = window.innerWidth * 0.3;
-    const dir = dragX < -threshold ? 1 : dragX > threshold ? -1 : 0;
-
-    if (dir !== 0 && !(dir === -1 && currentIndex === 0) && !(dir === 1 && currentIndex === songs.length - 1)) {
-      // Fly off screen then change song
-      setExitDir(dir);
-      setAnimating(true);
-      setDragX(dir < 0 ? window.innerWidth : -window.innerWidth);
-      setTimeout(() => { onSwipe(dir); }, 280);
-    } else {
-      // Snap back
-      setDragX(0);
-    }
+    const threshold = window.innerWidth * 0.28;
+    if (dragX < -threshold)      fireSwipe(1);
+    else if (dragX > threshold)  fireSwipe(-1);
+    else setDragX(0);
     startX.current = null;
   };
 
   const pill = { borderRadius: 5, padding: "3px 9px", fontSize: 12, fontFamily: T.mono, border: "1px solid", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, background: "none" };
 
-  const chartTransform = `translateX(${dragX}px)`;
-  const chartTransition = dragX === 0 && !animating ? "transform 0.28s cubic-bezier(0.25,1,0.5,1)"
-    : animating ? "transform 0.28s cubic-bezier(0.4,0,1,1)"
-    : "none";
+  // The whole screen slides
+  const screenStyle = {
+    position: "fixed", inset: 0,
+    background: T.bg,
+    zIndex: 100,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    transform: `translateX(${dragX}px)`,
+    transition: (dragX === 0 && !animating) ? "transform 0.28s cubic-bezier(0.25,1,0.5,1)"
+              : animating                   ? "transform 0.26s cubic-bezier(0.4,0,1,1)"
+              : "none",
+    willChange: "transform",
+  };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: T.bg, zIndex: 100, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-
-      {/* Header — safe area aware */}
-      <div style={{
-        paddingTop: "env(safe-area-inset-top, 12px)",
-        background: T.surface,
-        borderBottom: `1px solid ${T.border}`,
-        flexShrink: 0,
-      }}>
+    <div
+      style={screenStyle}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* ── Header — safe area ── */}
+      <div style={{ paddingTop: "env(safe-area-inset-top, 12px)", background: T.surface, borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
         <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button onClick={onExit} style={{ background: "none", border: "none", color: T.textMuted, fontSize: 13, cursor: "pointer", padding: "4px 0" }}>← Back</button>
           <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
@@ -371,13 +327,14 @@ function PerformanceView({ songs, currentIndex, onSwipe, onExit, onUpdateSong })
         </div>
       </div>
 
-      {/* Song info bar */}
+      {/* ── Song info bar ── */}
       <div style={{ padding: "12px 18px 10px", flexShrink: 0, borderBottom: `1px solid ${T.borderLight}` }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
           <div style={{ fontSize: 21, fontWeight: 600, color: T.text }}>{song.title}</div>
           {nextSong && <div style={{ fontSize: 11, color: T.textFaint, fontFamily: T.mono }}>next: <span style={{ color: T.textMuted }}>{nextSong.title}</span></div>}
         </div>
         <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {/* Key picker */}
           <div style={{ position: "relative" }}>
             <div onClick={() => setShowKeyPicker(p => !p)} style={{ ...pill, background: T.accentBg, color: T.accent, borderColor: T.accentBorder, fontWeight: 600 }}>
               Key of {liveKey || "?"}{song.key && liveKey !== song.key ? <span style={{ opacity: 0.5, fontWeight: 400 }}> ({song.key})</span> : null} ▾
@@ -393,11 +350,12 @@ function PerformanceView({ songs, currentIndex, onSwipe, onExit, onUpdateSong })
             {chordMode ? "Chords" : "Numbers"}
           </button>
         </div>
+        {/* Note */}
         <div style={{ marginTop: 8 }}>
           {editingNote ? (
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <input autoFocus value={liveNote} onChange={e => setLiveNote(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") saveNote(); if (e.key === "Escape") { setEditingNote(false); setLiveNote(song.note || ""); } }}
+                onKeyDown={e => { if (e.key === "Enter") saveNote(); if (e.key === "Escape") { setEditingNote(false); setLiveNote(song.note || ""); }}}
                 placeholder="Add a note…" style={{ ...inputStyle, fontSize: 12, padding: "5px 10px", flex: 1 }} />
               <button onClick={saveNote} style={{ background: T.accent, border: "none", borderRadius: 7, color: "#fff", padding: "5px 12px", cursor: "pointer", fontSize: 12 }}>Save</button>
               <button onClick={() => { setEditingNote(false); setLiveNote(song.note || ""); }} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 7, color: T.textMuted, padding: "5px 10px", cursor: "pointer", fontSize: 12 }}>✕</button>
@@ -412,31 +370,14 @@ function PerformanceView({ songs, currentIndex, onSwipe, onExit, onUpdateSong })
         </div>
       </div>
 
-      {/* Chart — pans with finger */}
-      <div
-        style={{ flex: 1, overflow: "hidden", position: "relative" }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-      >
-        <div
-          ref={scrollRef}
-          style={{
-            position: "absolute", inset: 0,
-            overflowY: "auto",
-            padding: "14px 18px 110px",
-            transform: chartTransform,
-            transition: chartTransition,
-            willChange: "transform",
-          }}
-        >
-          {chartLines.map(line => <ChartLine key={line.id} line={line} />)}
-        </div>
+      {/* ── Chart ── */}
+      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "14px 18px 110px" }}>
+        {chartLines.map(line => <ChartLine key={line.id} line={line} />)}
       </div>
 
       {showKeyPicker && <div onClick={() => setShowKeyPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 200 }} />}
 
-      {/* Bottom nav */}
+      {/* ── Bottom nav — safe area ── */}
       <div style={{
         position: "absolute", bottom: 0, left: 0, right: 0,
         padding: "12px 16px",
@@ -445,9 +386,9 @@ function PerformanceView({ songs, currentIndex, onSwipe, onExit, onUpdateSong })
         background: `linear-gradient(to top, ${T.bg} 65%, transparent)`,
         zIndex: 10,
       }}>
-        <button onClick={() => { setExitDir(-1); setAnimating(true); setDragX(window.innerWidth); setTimeout(() => onSwipe(-1), 280); }} disabled={currentIndex === 0} style={{ background: currentIndex === 0 ? "transparent" : T.surface, border: `1px solid ${currentIndex === 0 ? T.borderLight : T.border}`, borderRadius: 10, padding: "11px 20px", color: currentIndex === 0 ? T.textFaint : T.textMuted, fontSize: 14, cursor: currentIndex === 0 ? "default" : "pointer" }}>← Prev</button>
+        <button onClick={() => fireSwipe(-1)} disabled={currentIndex === 0} style={{ background: currentIndex === 0 ? "transparent" : T.surface, border: `1px solid ${currentIndex === 0 ? T.borderLight : T.border}`, borderRadius: 10, padding: "11px 20px", color: currentIndex === 0 ? T.textFaint : T.textMuted, fontSize: 14, cursor: currentIndex === 0 ? "default" : "pointer" }}>← Prev</button>
         <div style={{ fontSize: 11, color: T.textFaint, fontFamily: T.mono }}>swipe or tap</div>
-        <button onClick={() => { setExitDir(1); setAnimating(true); setDragX(-window.innerWidth); setTimeout(() => onSwipe(1), 280); }} disabled={currentIndex === songs.length - 1} style={{ background: currentIndex === songs.length - 1 ? "transparent" : T.accentBg, border: `1px solid ${currentIndex === songs.length - 1 ? T.borderLight : T.accentBorder}`, borderRadius: 10, padding: "11px 20px", color: currentIndex === songs.length - 1 ? T.textFaint : T.accent, fontSize: 14, cursor: currentIndex === songs.length - 1 ? "default" : "pointer" }}>Next →</button>
+        <button onClick={() => fireSwipe(1)} disabled={currentIndex === songs.length - 1} style={{ background: currentIndex === songs.length - 1 ? "transparent" : T.accentBg, border: `1px solid ${currentIndex === songs.length - 1 ? T.borderLight : T.accentBorder}`, borderRadius: 10, padding: "11px 20px", color: currentIndex === songs.length - 1 ? T.textFaint : T.accent, fontSize: 14, cursor: currentIndex === songs.length - 1 ? "default" : "pointer" }}>Next →</button>
       </div>
     </div>
   );
@@ -455,41 +396,42 @@ function PerformanceView({ songs, currentIndex, onSwipe, onExit, onUpdateSong })
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [unlocked, setUnlocked] = useState(() => loadData(PIN_KEY, false));
-  const [tab, setTab] = useState("setlist");
-  const [songs, setSongs] = useState(() => loadData(SONGS_KEY, DEFAULT_SONGS));
-  const [setlist, setSetlist] = useState(() => loadData(SETLIST_KEY, []));
+  const [unlocked,   setUnlocked]   = useState(() => loadData(PIN_KEY, false));
+  const [tab,        setTab]        = useState("setlist");
+  const [songs,      setSongs]      = useState(() => loadData(SONGS_KEY, DEFAULT_SONGS));
+  const [setlist,    setSetlist]    = useState(() => loadData(SETLIST_KEY, []));
   const [performing, setPerforming] = useState(false);
-  const [perfIndex, setPerfIndex] = useState(0);
-  const [modal, setModal] = useState(null);
-  const [search, setSearch] = useState("");
+  const [perfIndex,  setPerfIndex]  = useState(0);
+  const [modal,      setModal]      = useState(null);
+  const [search,     setSearch]     = useState("");
   const firstRender = useRef(true);
 
-  useEffect(() => {
-    if (firstRender.current) { firstRender.current = false; return; }
-    saveData(SONGS_KEY, songs);
-  }, [songs]);
-
-  useEffect(() => {
-    if (firstRender.current) return;
-    saveData(SETLIST_KEY, setlist);
-  }, [setlist]);
+  useEffect(() => { if (firstRender.current) { firstRender.current = false; return; } saveData(SONGS_KEY, songs); }, [songs]);
+  useEffect(() => { if (firstRender.current) return; saveData(SETLIST_KEY, setlist); }, [setlist]);
 
   if (!unlocked) return <PinScreen onUnlock={() => setUnlocked(true)} />;
 
   const setlistSongs = setlist.map(id => songs.find(s => s.id === id)).filter(Boolean);
+
+  // Library: filter by search, then group & sort by type
   const filteredSongs = songs.filter(s => s.title.toLowerCase().includes(search.toLowerCase()));
+  const groupedSongs  = TYPE_ORDER.map(type => ({
+    type,
+    songs: filteredSongs.filter(s => s.type === type).sort((a,b) => a.title.localeCompare(b.title)),
+  })).filter(g => g.songs.length > 0);
+  // Songs with no type go at the end
+  const ungrouped = filteredSongs.filter(s => !TYPE_ORDER.includes(s.type)).sort((a,b) => a.title.localeCompare(b.title));
 
   const toggleSong = id => setSetlist(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   const removeSong = id => setSetlist(p => p.filter(x => x !== id));
-  const moveUp = i => { const s = [...setlist]; [s[i - 1], s[i]] = [s[i], s[i - 1]]; setSetlist(s); };
-  const moveDown = i => { const s = [...setlist]; [s[i], s[i + 1]] = [s[i + 1], s[i]]; setSetlist(s); };
+  const moveUp   = i => { const s = [...setlist]; [s[i-1],s[i]] = [s[i],s[i-1]]; setSetlist(s); };
+  const moveDown = i => { const s = [...setlist]; [s[i],s[i+1]] = [s[i+1],s[i]]; setSetlist(s); };
   const saveSong = data => {
-    if (modal && modal.id) setSongs(p => p.map(s => s.id === modal.id ? { ...s, ...data } : s));
-    else { const id = Date.now(); setSongs(p => [...p, { id, ...data }]); }
+    if (modal && modal.id) setSongs(p => p.map(s => s.id === modal.id ? {...s,...data} : s));
+    else { const id = Date.now(); setSongs(p => [...p, {id,...data}]); }
   };
-  const deleteSong = id => { setSongs(p => p.filter(s => s.id !== id)); setSetlist(p => p.filter(x => x !== id)); };
-  const updateSong = (id, changes) => setSongs(p => p.map(s => s.id === id ? { ...s, ...changes } : s));
+  const deleteSong  = id => { setSongs(p => p.filter(s => s.id !== id)); setSetlist(p => p.filter(x => x !== id)); };
+  const updateSong  = (id, changes) => setSongs(p => p.map(s => s.id === id ? {...s,...changes} : s));
 
   if (performing && setlistSongs.length > 0) return (
     <PerformanceView songs={setlistSongs} currentIndex={perfIndex}
@@ -499,26 +441,45 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.font, color: T.text }}>
+      {/* ── Top safe area spacer ── */}
+      <div style={{ height: "env(safe-area-inset-top, 0px)", background: T.bg }} />
+
       <div style={{ padding: "20px 16px 0", maxWidth: 560, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 20, fontWeight: 600, color: T.text }}>Setlist</div>
             <div style={{ fontSize: 12, color: T.textMuted, marginTop: 1 }}>chord chart manager</div>
           </div>
-          {tab === "library" && <button onClick={() => setModal("add")} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "7px 13px", color: T.text, cursor: "pointer", fontSize: 13 }}>+ Add Song</button>}
+          {tab === "library" && (
+            <button onClick={() => setModal("add")} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "7px 13px", color: T.text, cursor: "pointer", fontSize: 13 }}>+ Add Song</button>
+          )}
         </div>
 
+        {/* Tabs */}
         <div style={{ display: "flex", background: T.surface, borderRadius: 9, padding: 3, marginTop: 16, marginBottom: 16, border: `1px solid ${T.border}` }}>
-          {["setlist", "library"].map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ flex: 1, background: tab === t ? T.bg : "transparent", border: tab === t ? `1px solid ${T.border}` : "1px solid transparent", borderRadius: 7, padding: "8px", cursor: "pointer", color: tab === t ? T.text : T.textMuted, fontSize: 13, transition: "all 0.15s" }}>
+          {["setlist","library"].map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{ flex: 1, background: tab===t ? T.bg : "transparent", border: tab===t ? `1px solid ${T.border}` : "1px solid transparent", borderRadius: 7, padding: "8px", cursor: "pointer", color: tab===t ? T.text : T.textMuted, fontSize: 13, transition: "all 0.15s" }}>
               {t === "setlist" ? `Setlist${setlistSongs.length ? ` (${setlistSongs.length})` : ""}` : `Library (${songs.length})`}
             </button>
           ))}
         </div>
 
-        {tab === "library" && <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search songs…" style={{ ...inputStyle, marginBottom: 12 }} />}
+        {/* Search (library) */}
+        {tab === "library" && (
+          <>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search songs…" style={{ ...inputStyle, marginBottom: 16 }} />
+            {/* Colour key */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+              {TYPE_ORDER.map(t => {
+                const ts = TYPE_STYLES[t];
+                return <span key={t} style={{ fontSize: 11, color: ts.color, background: ts.bg, border: `1px solid ${ts.border}`, borderRadius: 4, padding: "2px 8px", fontFamily: T.mono }}>{t}</span>;
+              })}
+            </div>
+          </>
+        )}
       </div>
 
+      {/* Content */}
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "0 16px 140px" }}>
         {tab === "setlist" && (
           setlistSongs.length === 0
@@ -529,15 +490,35 @@ export default function App() {
               </div>
             : setlistSongs.map((song, i) => <SetlistItem key={song.id} song={song} index={i} total={setlistSongs.length} onRemove={removeSong} onMoveUp={moveUp} onMoveDown={moveDown} />)
         )}
+
         {tab === "library" && (
           filteredSongs.length === 0
             ? <div style={{ textAlign: "center", padding: "40px 0", color: T.textFaint, fontSize: 14 }}>No songs found.</div>
-            : filteredSongs.map(song => <SongCard key={song.id} song={song} inSetlist={setlist.includes(song.id)} onToggle={toggleSong} onEdit={s => setModal(s)} />)
+            : <>
+                {groupedSongs.map(({ type, songs: gs }) => {
+                  const ts = TYPE_STYLES[type];
+                  return (
+                    <div key={type}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: ts.color, fontFamily: T.mono, letterSpacing: "0.1em", textTransform: "uppercase", padding: "4px 0 8px", borderBottom: `1px solid ${ts.border}`, marginBottom: 10 }}>
+                        {type} — {gs.length}
+                      </div>
+                      {gs.map(song => <SongCard key={song.id} song={song} inSetlist={setlist.includes(song.id)} onToggle={toggleSong} onEdit={s => setModal(s)} />)}
+                    </div>
+                  );
+                })}
+                {ungrouped.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 11, color: T.textMuted, fontFamily: T.mono, letterSpacing: "0.1em", textTransform: "uppercase", padding: "4px 0 8px", borderBottom: `1px solid ${T.border}`, marginBottom: 10 }}>Other — {ungrouped.length}</div>
+                    {ungrouped.map(song => <SongCard key={song.id} song={song} inSetlist={setlist.includes(song.id)} onToggle={toggleSong} onEdit={s => setModal(s)} />)}
+                  </div>
+                )}
+              </>
         )}
       </div>
 
+      {/* Go Live */}
       {setlistSongs.length > 0 && (
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "12px 16px 28px", background: `linear-gradient(to top, ${T.bg} 70%, transparent)` }}>
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "12px 16px", paddingBottom: "max(28px, env(safe-area-inset-bottom))", background: `linear-gradient(to top, ${T.bg} 70%, transparent)` }}>
           <div style={{ maxWidth: 560, margin: "0 auto" }}>
             <button onClick={() => { setPerfIndex(0); setPerforming(true); }} style={{ width: "100%", background: T.accent, border: "none", borderRadius: 12, padding: "14px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
               ▶ Go Live — {setlistSongs.length} {setlistSongs.length === 1 ? "song" : "songs"}
