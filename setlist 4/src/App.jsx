@@ -67,9 +67,8 @@ async function fetchFromCloud() {
 }
 async function pushSongs(songs) {
   const rows = songs.map(s=>({id:s.id,data:{title:s.title,key:s.key,tempo:s.tempo,note:s.note,type:s.type,chart:s.chart}}));
-  await supabase.from("songs").upsert(rows,{onConflict:"id"});
-  const {data:existing} = await supabase.from("songs").select("id");
-  if(existing){const ids=songs.map(s=>s.id);const del=existing.map(r=>r.id).filter(id=>!ids.includes(id));if(del.length) await supabase.from("songs").delete().in("id",del);}
+  const { error } = await supabase.from("songs").upsert(rows,{onConflict:"id"});
+  if (error) { console.error("pushSongs error:", error); throw error; }
 }
 async function pushSetlist(ids) {
   await supabase.from("setlist").upsert({id:"main",song_ids:ids,updated_at:new Date().toISOString()},{onConflict:"id"});
