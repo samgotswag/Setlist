@@ -274,7 +274,7 @@ function SetlistItem({song,index,total,onRemove,onMoveUp,onMoveDown,onTapToPlay}
         <div style={{fontSize:14,fontWeight:500,color:T.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{song.title}</div>
         <div style={{fontSize:11,color:T.textMuted,fontFamily:T.mono,marginTop:1}}>
           Key of {song.key}{song.note?` · ${song.note}`:""}
-          <span style={{color:T.accent,marginLeft:6}}>▶ tap to start here</span>
+          <span style={{color:T.accent,marginLeft:6}}></span>
         </div>
       </div>
       <div style={{display:"flex",gap:4}}>
