@@ -22,14 +22,34 @@ const TYPE_STYLES = {
 const TYPE_ORDER = ["Praise", "Worship", "Anthem"];
 const CORRECT_PIN = "1603";
 const PIN_KEY = "setlist-unlocked";
-const KEYS = ["A","Bb","B","C","Db","D","Eb","E","F","F#","G","Ab"];
 const TYPES = ["Praise","Worship","Anthem"];
 const CHROMATIC = ["C","Db","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
 const KEY_TO_IDX = {C:0,Db:1,"C#":1,D:2,Eb:3,"D#":3,E:4,F:5,"F#":6,Gb:6,G:7,Ab:8,"G#":8,A:9,Bb:10,"A#":10,B:11};
 const DEGREE_ST = {1:0,2:2,3:4,4:5,5:7,6:9,7:11};
 
+// Natural keys for picker — sharps/flats applied via toggle
+const NATURAL_KEYS = ["A","B","C","D","E","F","G"];
+const SHARP_MAP = { A:"A#", B:"C", C:"C#", D:"D#", E:"F", F:"F#", G:"G#" };
+const FLAT_MAP  = { A:"Ab", B:"Bb", C:"Db", D:"Eb", E:"Eb", F:"Gb", G:"Ab" };
+// Keys that don't logically have a sharp/flat
+const NO_SHARP = new Set(["E","B"]);
+const NO_FLAT  = new Set(["C","F"]);
+
+function getNatural(key) {
+  if (!key) return "C";
+  if (key.length === 1) return key;
+  return key[0];
+}
+function getModifier(key) {
+  if (!key || key.length === 1) return null;
+  if (key.includes("#")) return "#";
+  if (key.includes("b") || key.includes("♭")) return "b";
+  return null;
+}
+
 const DEFAULT_SONGS = [{"id":3847788,"title":"Agnus Dei","key":"D","tempo":"","note":"","type":"Worship","chart":"Verse 1\n\n| 1 |\n\nChorus\n\n| 1 |\n\n| 4 | 1 | 6m | 5 |\n\n| 4 |"},{"id":2812383,"title":"All Hail King Jesus","key":"E","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| 1 | 6m | 5 | 4 |\n\nPre-Chorus\n\n| 2m | 6m | 5 |\n\n| 1 | 3m | 4 |\n\nChorus\n\n| 1 | 1sus |\n\n| 1 | 1sus | 3m | 6m |\n\n| 4 |\n\n| 1/3 | 5 | 1 |\n\nBridge\n\n| 5 | 6m | 4 | 1 | 1/3 |"},{"id":5390733,"title":"Because Of Christ","key":"D","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 1/3 | 1 |\n\n| 5 | 6m |\n\n| 4 | 1 |\n\n| 6m | 5 |\n\nChorus\n\n| 4 |\n\n| 1sus | 1 |\n\n| 1/5 | 5 |\n\n| 6m | 5 |\n\nBridge\n\n| 1 | 4/1 | 1 |\n\n| 6m/1 | 5/1 |"},{"id":716362,"title":"Bless God","key":"D","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| 1 | 2m | 4 | 1 | 6m | 5 |\n\nChorus\n\n| 1 | 2m | 4 |\n\n| 6m | 4 | 5 |\n\nBridge\n\n| 1/3 | 2m | 4 | 6m | 5 |"},{"id":4535294,"title":"Blood Of Jesus","key":"G","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 4/1 |\n\n| 5 | 4 | 1 |\n\n| 6m | 5 | 1 |\n\nchorus\n\n| 4 | 1 | 5 |\n\n| 6m | 4 |\n\n| 1 | 5 |\n\nbridge\n\n| 1 | 5 | 6m | 4 |"},{"id":3375914,"title":"Center","key":"A","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 4 | 6m | 4 |\n\nchorus\n\n| 4 | 6m | 1 | 5 |\n\n| 3m | 6m | 4 | 5 |\n\nbridge\n\n| 4 | 5 | 6m | 3m |"},{"id":8199008,"title":"FREE!","key":"A","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| Am | Dm | F | E/B |\n\nPre Chorus\n\n| Am | Dm | F | E/G# |\n\nChorus\n\n| F | Dm | C | E |\n\nBridge\n\nAm"},{"id":2724960,"title":"Fall Like Rain","key":"E","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 5/7 | 6 | 4 |\n\nChorus\n\n| 1 | 5/7 | 6 | 1/3 |\n\nBridge\n\n| 1 | 2 | 1/3 | 4 |"},{"id":2861416,"title":"Give Me Jesus","key":"F","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 4/6 | 2 | 1/3 | 4 |\n\nchorus\n\n| 1 | 5 | 2 | 6 | 4 | 5 |\n\nbridge\n\n| 1/3 | 4 | 6 | 5 |"},{"id":6169345,"title":"Gratitude","key":"D","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 6m | 5 | 4 |\n\nChorus\n\n| 1 | 5 |\n\n| 4 | 6m | 5 | 1 |\n\nBridge\n\n| 1 | 5 | 4 |\n\n| 6m | 5 |"},{"id":2334879,"title":"Great Are You Lord","key":"C","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 4 | 6m | 5 |\n\nchorus\n\n| 4 | 6m | 5 |\n\nbridge\n\n| 1 | 4 | 4 | 1 |"},{"id":1736063,"title":"Heart of Worship","key":"","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 5 | 2m | 5 |\n\nPre Chorus\n\n| 2m | 1/3 | 5 |\n\nChorus\n\n| 1 | 5/7 |\n\n| 2m | 4 | 5 | 1 |"},{"id":3866966,"title":"Holy Forever","key":"F","tempo":"","note":"","type":"Anthem","chart":"Verse\n\n| 1 | 4 | 1 |\n\n| 6m | 5 | 4 |\n\nChorus\n\n| 4 | 6m | 5 |\n\n| 1/3 | 6m |\n\n| 2m | 5 |\n\n| 1 | 1sus | 1 |\n\nTag\n\n| 2m | 5 |\n\n| 1 | 1sus | 1 |"},{"id":1203969,"title":"I Speak Jesus","key":"D","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 6m | 4 | 1 |\n\nchorus\n\n| 5 | 1 | 4 | 1 |\n\nbridge\n\n| 1 |\n\n| 6m |\n\n| 4 |\n\n| 1 |"},{"id":7595253,"title":"I Thank God","key":"C","tempo":"","note":"","type":"Praise","chart":"verse\n\n| 1 | 4 |\n\npre chorus\n\n| 5 | 6m | 4 | 1 |\n\n| 5 | 6m | 4 |\n\nchorus\n\n| 1 | 2m | 1 | 4 |\n\n| 6m | 4 |\n\nbridge\n\n| 1 |\n\n| 5 | 6m | 4 | 1 |"},{"id":5798964,"title":"I Will Exalt You","key":"B","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 5/7 | 1 | 1/3 | 4 |\n\n| 5sus | 1 |\n\nchorus\n\n| 5 | 2m | 5/7 | 1 |\n\n| 5 | 2m | 1 | 4 | 6m | 5 |"},{"id":4935454,"title":"Inhabit","key":"F","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 4 | 6m | 5 | 4 |\n\nchorus\n\n| 1 | 4 | 5 | 4 |\n\nbridge\n\n| 1 | 1sus | 6m | 4 |"},{"id":9543310,"title":"Jesus Have It All","key":"F","tempo":"","note":"","type":"Worship","chart":"verse\n\n| 1 | 5 | 2m | 4 | 1 |\n\nchorus\n\n| 4 | 6m | 5 | 2m |\n\n| 4 | 6m | 5 | 4 |\n\nbridge\n\n| 4 | 6m | 5 | 2m |"},{"id":9198043,"title":"Lord Send Revival","key":"D","tempo":"","note":"","type":"Anthem","chart":"Verse / Chorus / Bridge\n\n| 4 | 1 | 5 |"},{"id":5525138,"title":"Make Room","key":"F","tempo":"","note":"","type":"Worship","chart":"verse / chorus / bridge\n\n| 1 | 5 | 2m | 4 |"},{"id":4788614,"title":"Name Above All Names","key":"D","tempo":"","note":"","type":"Anthem","chart":"Verse\n\n| 4 | 1 | 5 x3 |\n\n| 6 | 6m | 5 |\n\nChorus\n\n| 1 | 4 | 6m | 5 |\n\nBridge\n\n| 4 | 6m | 1 | 3 |\n\n| 4 | 6m | 1 | 5 |"},{"id":8174699,"title":"No One Else","key":"F","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 2m | 4 | 5sus | 5 |\n\nChorus\n\n| 1/3 | 4 | 5 |\n\nBridge\n\n| 4 | 5 | 6m | 5 |"},{"id":8102927,"title":"No One Like The Lord","key":"E","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| 6m | 4 | 1 | 3m |\n\n| 6m | 2m | 1 | 5 |\n\nChorus\n\n| 6m | 5/7 | 1 | 2m | 4 |\n\n| 5 | 6m |\n\nBridge\n\n| 6m |\n\n| 4 | 5 | 6m |"},{"id":3242609,"title":"O Praise the Name","key":"G","tempo":"","note":"","type":"Anthem","chart":"chorus\n\n| 1 | 4 | 1 | 6 | 5 |\n\n| 1/3 | 4 | 6 | 5 | 4 | 1 |"},{"id":3323754,"title":"Open the eyes of my heart","key":"","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1 | 5 | 2m | 1 |\n\nChorus\n\n| 5 | 4 |\n\n| 1 | 5 |\n\n| 6m | 4 |\n\n| 1 | 5 |"},{"id":166542,"title":"Thank God I'm Free","key":"E","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| 1/3 | 4 | 1 |\n\n| 6m | 5 | 4 |\n\nchorus\n\n| 1/3 | 4 | 1 |\n\n| 6m | 5 | 4 |\n\nBridge\n\n| 5/7 | 1 | 4 |"},{"id":7544044,"title":"Til The Walls Come Down","key":"D","tempo":"","note":"","type":"Anthem","chart":"Verse\n\n| 6 | 4 | 1 | 3 |\n\nBridge\n\n| 6 |\n\n| 4 | 6m | 5 | 2m | 1 |"},{"id":442544,"title":"Washed","key":"D","tempo":"","note":"","type":"Worship","chart":"Verse\n\n| 1/3 | 4 | 5/7 | 6m |\n\nChorus\n\n| 1 | 4 | 6m | 5 |\n\nBridge\n\n| 1 | 4 | 6m | 4 |"},{"id":634525,"title":"What A God","key":"G","tempo":"","note":"","type":"Praise","chart":"Verse\n\n| 6m | 5 |\n\n| 4 | 1/3 | 5 |\n\nChorus\n\n| 4 | 5 | 6m | 1/3 |\n\nBridge\n\n| 4 | 5 | 6m | 1/3 |"},{"id":6619951,"title":"What a beautiful name","key":"D","tempo":"","note":"","type":"Anthem","chart":"Chorus\n\n| 1 | 5 |\n\n| 6m | 5 | 4 |\n\n| 1/3 | 5 |\n\n| 6m | 5 | 4 |\n\nBridge\n\n| 4 | 5 | 6m | 1/3 |\n\n| 4 | 5 | 6m | 5 |"},{"id":5154995,"title":"Who Else","key":"G","tempo":"","note":"","type":"Praise","chart":"verse\n\n| 1 | 5 | 6m | 5 | 4 |\n\nchorus\n\n| 1 | 2m | 6m | 4 |\n\nbridge\n\n| 4 | 5 | 6m | 1 | 5 |"}];
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatChart(text) {
   return (text||"").split("\n").map((line,i) => {
     const t = line.trim();
@@ -38,7 +58,7 @@ function formatChart(text) {
   });
 }
 function transposeCell(cell,key) {
-  const root = KEY_TO_IDX[key]; if(root===undefined) return cell;
+  const root=KEY_TO_IDX[key]; if(root===undefined) return cell;
   return cell.replace(/\b(\d)(m|sus|maj|dim|aug|add\d*)?(\/(\d)(m|sus)?)?/g,(_,deg,mod,slash,bd,bm)=>{
     const s=DEGREE_ST[+deg]; if(s===undefined) return _;
     const ch=CHROMATIC[(root+s)%12]+(mod||"");
@@ -55,37 +75,139 @@ function fmtTime(iso) {
   return d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 }
 
+// ─── Supabase ─────────────────────────────────────────────────────────────────
 async function fetchFromCloud() {
   const [{data:sd},{data:sl}] = await Promise.all([
     supabase.from("songs").select("id,data").order("id"),
     supabase.from("setlist").select("song_ids,updated_at").eq("id","main").single(),
   ]);
   return {
-    songs: sd ? sd.map(r=>({id:r.id,...r.data})) : null,
-    setlist: sl ? {ids:sl.song_ids, updatedAt:sl.updated_at} : null,
+    songs: sd?sd.map(r=>({id:r.id,...r.data})):null,
+    setlist: sl?{ids:sl.song_ids,updatedAt:sl.updated_at}:null,
   };
 }
 async function pushSongs(songs) {
-  const rows = songs.map(s=>({id:s.id,data:{title:s.title,key:s.key,tempo:s.tempo,note:s.note,type:s.type,chart:s.chart}}));
-  const { error } = await supabase.from("songs").upsert(rows,{onConflict:"id"});
-  if (error) { console.error("pushSongs error:", error); throw error; }
+  const rows=songs.map(s=>({id:s.id,data:{title:s.title,key:s.key,tempo:s.tempo,note:s.note,type:s.type,chart:s.chart}}));
+  const {error}=await supabase.from("songs").upsert(rows,{onConflict:"id"});
+  if(error){console.error("pushSongs error:",error);throw error;}
+  const {data:existing}=await supabase.from("songs").select("id");
+  if(existing){const ids=songs.map(s=>s.id);const del=existing.map(r=>r.id).filter(id=>!ids.includes(id));if(del.length) await supabase.from("songs").delete().in("id",del);}
 }
 async function pushSetlist(ids) {
   await supabase.from("setlist").upsert({id:"main",song_ids:ids,updated_at:new Date().toISOString()},{onConflict:"id"});
 }
 
+// ─── Shared styles ────────────────────────────────────────────────────────────
 const inputStyle = {
   width:"100%", background:T.bg, border:`1px solid ${T.border}`,
   borderRadius:8, padding:"9px 12px", color:T.text,
   fontSize:"16px", fontFamily:T.font, boxSizing:"border-box", outline:"none",
 };
 
+// ─── Key Picker ───────────────────────────────────────────────────────────────
+function KeyPicker({ value, onChange }) {
+  const natural  = getNatural(value);
+  const modifier = getModifier(value);
+
+  const selectNatural = (n) => {
+    // Keep modifier if valid, else drop it
+    if (modifier === "#" && !NO_SHARP.has(n)) onChange(SHARP_MAP[n]);
+    else if (modifier === "b" && !NO_FLAT.has(n)) onChange(FLAT_MAP[n]);
+    else onChange(n);
+  };
+
+  const toggleModifier = (mod) => {
+    if (mod === "#") {
+      if (modifier === "#") onChange(natural); // toggle off
+      else if (!NO_SHARP.has(natural)) onChange(SHARP_MAP[natural]);
+    } else {
+      if (modifier === "b") onChange(natural); // toggle off
+      else if (!NO_FLAT.has(natural)) onChange(FLAT_MAP[natural]);
+    }
+  };
+
+  const canSharp = !NO_SHARP.has(natural);
+  const canFlat  = !NO_FLAT.has(natural);
+
+  return (
+    <div>
+      {/* Natural key grid */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:6, marginBottom:8 }}>
+        {NATURAL_KEYS.map(n => (
+          <button key={n} onClick={() => selectNatural(n)} style={{
+            padding:"9px 4px", borderRadius:8, border:`1px solid ${natural===n?T.accent:T.border}`,
+            background: natural===n?T.accentBg:T.bg,
+            color: natural===n?T.accent:T.text,
+            fontSize:16, fontWeight: natural===n?700:400, cursor:"pointer",
+            fontFamily:T.mono,
+          }}>{n}</button>
+        ))}
+      </div>
+      {/* Sharp / Flat toggles */}
+      <div style={{ display:"flex", gap:8 }}>
+        <button onClick={() => toggleModifier("#")} disabled={!canSharp} style={{
+          flex:1, padding:"7px", borderRadius:8,
+          border:`1px solid ${modifier==="#"?T.accent:T.border}`,
+          background: modifier==="#"?T.accentBg:T.bg,
+          color: !canSharp?T.textFaint:modifier==="#"?T.accent:T.textMuted,
+          fontSize:16, cursor: canSharp?"pointer":"default", fontFamily:T.mono,
+        }}>♯ Sharp</button>
+        <button onClick={() => toggleModifier("b")} disabled={!canFlat} style={{
+          flex:1, padding:"7px", borderRadius:8,
+          border:`1px solid ${modifier==="b"?T.accent:T.border}`,
+          background: modifier==="b"?T.accentBg:T.bg,
+          color: !canFlat?T.textFaint:modifier==="b"?T.accent:T.textMuted,
+          fontSize:16, cursor: canFlat?"pointer":"default", fontFamily:T.mono,
+        }}>♭ Flat</button>
+      </div>
+      {/* Current key display */}
+      <div style={{ textAlign:"center", marginTop:10, fontSize:13, color:T.textMuted, fontFamily:T.mono }}>
+        Selected: <span style={{ color:T.accent, fontWeight:700 }}>{value||"—"}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Compact key picker for live mode (inline dropdown) ───────────────────────
+function LiveKeyPicker({ value, onChange, onClose }) {
+  const natural  = getNatural(value);
+  const modifier = getModifier(value);
+
+  const selectNatural = (n) => {
+    if (modifier==="#"&&!NO_SHARP.has(n)) onChange(SHARP_MAP[n]);
+    else if (modifier==="b"&&!NO_FLAT.has(n)) onChange(FLAT_MAP[n]);
+    else onChange(n);
+  };
+  const toggleMod = (mod) => {
+    if (mod==="#") { if(modifier==="#") onChange(natural); else if(!NO_SHARP.has(natural)) onChange(SHARP_MAP[natural]); }
+    else           { if(modifier==="b") onChange(natural); else if(!NO_FLAT.has(natural))  onChange(FLAT_MAP[natural]);  }
+  };
+
+  return (
+    <div style={{ position:"absolute", top:"calc(100% + 6px)", left:0, zIndex:300, background:T.surface, border:`1px solid ${T.border}`, borderRadius:12, padding:12, minWidth:240, boxShadow:"0 8px 24px rgba(0,0,0,0.5)" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7, 1fr)", gap:5, marginBottom:8 }}>
+        {NATURAL_KEYS.map(n=>(
+          <button key={n} onClick={()=>selectNatural(n)} style={{ padding:"7px 2px", borderRadius:7, border:`1px solid ${natural===n?T.accent:T.border}`, background:natural===n?T.accentBg:T.bg, color:natural===n?T.accent:T.text, fontSize:14, fontWeight:natural===n?700:400, cursor:"pointer", fontFamily:T.mono }}>{n}</button>
+        ))}
+      </div>
+      <div style={{ display:"flex", gap:6 }}>
+        {["#","b"].map(mod => {
+          const disabled = mod==="#"?NO_SHARP.has(natural):NO_FLAT.has(natural);
+          const active   = mod==="#"?modifier==="#":modifier==="b";
+          return <button key={mod} onClick={()=>toggleMod(mod)} disabled={disabled} style={{ flex:1, padding:"6px", borderRadius:7, border:`1px solid ${active?T.accent:T.border}`, background:active?T.accentBg:T.bg, color:disabled?T.textFaint:active?T.accent:T.textMuted, fontSize:14, cursor:disabled?"default":"pointer", fontFamily:T.mono }}>{mod==="#"?"♯ Sharp":"♭ Flat"}</button>;
+        })}
+      </div>
+      <div style={{ textAlign:"center", marginTop:8, fontSize:12, color:T.accent, fontFamily:T.mono, fontWeight:700 }}>{value||"—"}</div>
+    </div>
+  );
+}
+
 // ─── PIN ──────────────────────────────────────────────────────────────────────
 function PinScreen({onUnlock}) {
   const [pin,setPin]=useState(""); const [shake,setShake]=useState(false);
-  const tap = d => {
-    if(pin.length>=4) return;
-    const next=pin+d; setPin(next);
+  const tap=d=>{
+    if(pin.length>=4)return;
+    const next=pin+d;setPin(next);
     if(next.length===4){
       if(next===CORRECT_PIN){localStorage.setItem(PIN_KEY,"1");onUnlock();}
       else{setShake(true);setTimeout(()=>{setPin("");setShake(false);},600);}
@@ -121,12 +243,13 @@ function ChartLine({line}) {
   return <div style={{color:T.textMuted,fontFamily:T.mono,fontSize:13}}>{line.content}</div>;
 }
 
-// ─── SongCard ─────────────────────────────────────────────────────────────────
-function SongCard({song,inSetlist,onToggle,onEdit}) {
+// ─── SongCard — tap body to preview, tap + to toggle setlist ─────────────────
+function SongCard({song,inSetlist,onToggle,onPreview,onEdit}) {
   const ts=TYPE_STYLES[song.type]||{};
   return (
     <div style={{background:inSetlist?T.accentBg:T.surface,border:`1px solid ${inSetlist?T.accentBorder:T.border}`,borderRadius:10,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-      <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>onToggle(song.id)}>
+      {/* Tap body → preview */}
+      <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>onPreview(song)}>
         <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
           <div style={{fontSize:15,fontWeight:500,color:T.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{song.title}</div>
           {song.type&&<span style={{fontSize:10,color:ts.color,background:ts.bg,border:`1px solid ${ts.border}`,borderRadius:4,padding:"1px 6px",fontFamily:T.mono,flexShrink:0}}>{song.type}</span>}
@@ -134,20 +257,25 @@ function SongCard({song,inSetlist,onToggle,onEdit}) {
         <div style={{fontSize:12,color:T.textMuted,fontFamily:T.mono,marginTop:2}}>{song.key?`Key of ${song.key}`:"No key"}{song.tempo?` · ${song.tempo}`:""}{song.note?` · ${song.note}`:""}</div>
       </div>
       <button onClick={()=>onEdit(song)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:7,color:T.textMuted,padding:"5px 9px",cursor:"pointer",fontSize:12,flexShrink:0}}>Edit</button>
+      {/* Tap + to toggle setlist */}
       <div onClick={()=>onToggle(song.id)} style={{width:28,height:28,borderRadius:"50%",background:inSetlist?T.accent:T.border,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:inSetlist?"#fff":T.textMuted,flexShrink:0,cursor:"pointer"}}>{inSetlist?"✓":"+"}</div>
     </div>
   );
 }
 
-// ─── SetlistItem ──────────────────────────────────────────────────────────────
-function SetlistItem({song,index,total,onRemove,onMoveUp,onMoveDown}) {
+// ─── SetlistItem — tap to start from this song ───────────────────────────────
+function SetlistItem({song,index,total,onRemove,onMoveUp,onMoveDown,onTapToPlay}) {
   const Btn=({disabled,onClick,label})=><button onClick={onClick} disabled={disabled} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:6,color:disabled?T.textFaint:T.textMuted,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",cursor:disabled?"default":"pointer",fontSize:14,padding:0}}>{label}</button>;
   return (
     <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:10,padding:"11px 13px",display:"flex",alignItems:"center",gap:10,marginBottom:7}}>
       <div style={{color:T.accent,fontFamily:T.mono,fontSize:13,width:20,textAlign:"center",flexShrink:0}}>{index+1}</div>
-      <div style={{flex:1,minWidth:0}}>
+      {/* Tap song body to play from here */}
+      <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>onTapToPlay(index)}>
         <div style={{fontSize:14,fontWeight:500,color:T.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{song.title}</div>
-        <div style={{fontSize:11,color:T.textMuted,fontFamily:T.mono,marginTop:1}}>Key of {song.key}{song.note?` · ${song.note}`:""}</div>
+        <div style={{fontSize:11,color:T.textMuted,fontFamily:T.mono,marginTop:1}}>
+          Key of {song.key}{song.note?` · ${song.note}`:""}
+          <span style={{color:T.accent,marginLeft:6}}>▶ tap to start here</span>
+        </div>
       </div>
       <div style={{display:"flex",gap:4}}>
         <Btn disabled={index===0} onClick={()=>onMoveUp(index)} label="↑"/>
@@ -177,10 +305,10 @@ function SongModal({existing,onClose,onSave,onDelete}) {
         </div>
         <label style={lbl}>Song Title</label>
         <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. How Great Is Our God" style={inputStyle}/>
-        <div style={{display:"flex",gap:10}}>
-          <div style={{flex:1}}><label style={lbl}>Key</label><select value={key} onChange={e=>setKey(e.target.value)} style={inputStyle}>{KEYS.map(k=><option key={k}>{k}</option>)}</select></div>
-          <div style={{flex:1}}><label style={lbl}>Tempo</label><input value={tempo} onChange={e=>setTempo(e.target.value)} placeholder="72 BPM" style={inputStyle}/></div>
-        </div>
+        <label style={lbl}>Key</label>
+        <KeyPicker value={key} onChange={setKey}/>
+        <label style={{...lbl,marginTop:14}}>Tempo</label>
+        <input value={tempo} onChange={e=>setTempo(e.target.value)} placeholder="72 BPM" style={inputStyle}/>
         <label style={lbl}>Type</label>
         <div style={{display:"flex",gap:8}}>
           {TYPES.map(t=>{const ts=TYPE_STYLES[t];const sel=type===t;return<button key={t} onClick={()=>setType(t)} style={{flex:1,padding:"8px",borderRadius:8,border:`1px solid ${sel?ts.border:T.border}`,background:sel?ts.bg:T.bg,color:sel?ts.color:T.textMuted,fontSize:14,cursor:"pointer",fontWeight:sel?600:400}}>{t}</button>;})}
@@ -198,7 +326,7 @@ function SongModal({existing,onClose,onSave,onDelete}) {
   );
 }
 
-// ─── Song Panel ───────────────────────────────────────────────────────────────
+// ─── SongPanel ────────────────────────────────────────────────────────────────
 function SongPanel({song,chordMode,liveKey}) {
   const lines=formatChart(song.chart).map(l=>chordMode&&l.type==="bars"?{...l,content:transposeLine(l.content,liveKey)}:l);
   return (
@@ -208,7 +336,75 @@ function SongPanel({song,chordMode,liveKey}) {
   );
 }
 
-// ─── Performance View — iOS Photos strip ──────────────────────────────────────
+// ─── Quick Preview Modal — single song from library ───────────────────────────
+function SongPreviewModal({song,onClose,onUpdateSong}) {
+  const [liveKey,setLiveKey]=useState(song.key||"");
+  const [chordMode,setChordMode]=useState(false);
+  const [showKeyPicker,setShowKeyPicker]=useState(false);
+  const [liveNote,setLiveNote]=useState(song.note||"");
+  const [editingNote,setEditingNote]=useState(false);
+
+  const handleKeyChange=k=>{setLiveKey(k);setShowKeyPicker(false);onUpdateSong(song.id,{key:k});};
+  const saveNote=()=>{onUpdateSong(song.id,{note:liveNote});setEditingNote(false);};
+
+  const pill={borderRadius:5,padding:"3px 9px",fontSize:12,fontFamily:T.mono,border:"1px solid",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4,background:"none"};
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:150,display:"flex",flexDirection:"column"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{flex:1,display:"flex",flexDirection:"column",background:T.bg,marginTop:"env(safe-area-inset-top, 44px)"}}>
+        {/* Header */}
+        <div style={{padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${T.border}`,background:T.surface,flexShrink:0}}>
+          <button onClick={onClose} style={{background:"none",border:"none",color:T.textMuted,fontSize:13,cursor:"pointer"}}>✕ Close</button>
+          <div style={{fontSize:13,color:T.textMuted,fontFamily:T.mono}}>Preview</div>
+          <div style={{width:60}}/>
+        </div>
+
+        {/* Song info */}
+        <div style={{padding:"12px 18px 10px",flexShrink:0,borderBottom:`1px solid ${T.borderLight}`}}>
+          <div style={{fontSize:21,fontWeight:600,color:T.text}}>{song.title}</div>
+          <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap",alignItems:"center"}}>
+            <div style={{position:"relative"}}>
+              <div onClick={()=>setShowKeyPicker(p=>!p)} style={{...pill,background:T.accentBg,color:T.accent,borderColor:T.accentBorder,fontWeight:600}}>
+                Key of {liveKey||"?"}{song.key&&liveKey!==song.key?<span style={{opacity:0.5}}> ({song.key})</span>:null} ▾
+              </div>
+              {showKeyPicker&&<LiveKeyPicker value={liveKey} onChange={handleKeyChange} onClose={()=>setShowKeyPicker(false)}/>}
+            </div>
+            {song.tempo&&<div style={{...pill,color:T.textMuted,borderColor:T.border,cursor:"default"}}>{song.tempo}</div>}
+            <button onClick={()=>setChordMode(m=>!m)} style={{...pill,background:chordMode?"rgba(99,102,241,0.15)":T.surface,color:chordMode?"#a5b4fc":T.textMuted,borderColor:chordMode?"rgba(99,102,241,0.35)":T.border}}>
+              {chordMode?"Chords":"Numbers"}
+            </button>
+          </div>
+          <div style={{marginTop:8}}>
+            {editingNote?(
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <input autoFocus value={liveNote} onChange={e=>setLiveNote(e.target.value)}
+                  onKeyDown={e=>{if(e.key==="Enter")saveNote();if(e.key==="Escape")setEditingNote(false);}}
+                  placeholder="Add a note…" style={{...inputStyle,padding:"5px 10px",flex:1}}/>
+                <button onClick={saveNote} style={{background:T.accent,border:"none",borderRadius:7,color:"#fff",padding:"5px 12px",cursor:"pointer",fontSize:14}}>Save</button>
+                <button onClick={()=>setEditingNote(false)} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:7,color:T.textMuted,padding:"5px 10px",cursor:"pointer",fontSize:14}}>✕</button>
+              </div>
+            ):(
+              <div onClick={()=>setEditingNote(true)} style={{display:"inline-flex",alignItems:"center",gap:5,cursor:"pointer",padding:"3px 0"}}>
+                {liveNote?<span style={{background:"rgba(99,102,241,0.1)",color:"#a5b4fc",border:"1px solid rgba(99,102,241,0.25)",borderRadius:5,padding:"2px 9px",fontSize:12,fontFamily:T.mono}}>📝 {liveNote}</span>:<span style={{color:T.textFaint,fontSize:12,fontFamily:T.mono}}>+ add note</span>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Chart */}
+        <div style={{flex:1,overflowY:"auto",padding:"14px 18px 40px"}}>
+          {formatChart(song.chart).map(l=>{
+            const line=chordMode&&l.type==="bars"?{...l,content:transposeLine(l.content,liveKey)}:l;
+            return <ChartLine key={l.id} line={line}/>;
+          })}
+        </div>
+      </div>
+      {showKeyPicker&&<div onClick={()=>setShowKeyPicker(false)} style={{position:"fixed",inset:0,zIndex:200}}/>}
+    </div>
+  );
+}
+
+// ─── Performance View ─────────────────────────────────────────────────────────
 function PerformanceView({songs,currentIndex,onIndexChange,onExit,onUpdateSong}) {
   const W=window.innerWidth;
   const [offsetX,setOffsetX]=useState(0);
@@ -236,34 +432,24 @@ function PerformanceView({songs,currentIndex,onIndexChange,onExit,onUpdateSong})
     setTimeout(()=>{onIndexChange(targetIdx);setOffsetX(0);setSettling(false);},300);
   },[currentIndex,W,onIndexChange]);
 
-  const handleKeyChange=k=>{
-    setLiveKeys(p=>({...p,[song.id]:k}));
-    setShowKeyPicker(false);
-    onUpdateSong(song.id,{key:k});
-  };
+  const handleKeyChange=k=>{setLiveKeys(p=>({...p,[song.id]:k}));setShowKeyPicker(false);onUpdateSong(song.id,{key:k});};
   const saveNote=()=>{onUpdateSong(song.id,{note:liveNote});setEditingNote(false);};
-
   const stripX=-(currentIndex*W)+offsetX;
 
-  const onTS=e=>{
-    if(settling)return;
-    startX.current=e.touches[0].clientX; startY.current=e.touches[0].clientY;
-    isHoriz.current=false; lastX.current=e.touches[0].clientX; lastT.current=Date.now(); vel.current=0;
-  };
+  const onTS=e=>{if(settling)return;startX.current=e.touches[0].clientX;startY.current=e.touches[0].clientY;isHoriz.current=false;lastX.current=e.touches[0].clientX;lastT.current=Date.now();vel.current=0;};
   const onTM=e=>{
     if(settling||startX.current===null)return;
-    const dx=e.touches[0].clientX-startX.current, dy=e.touches[0].clientY-startY.current;
+    const dx=e.touches[0].clientX-startX.current,dy=e.touches[0].clientY-startY.current;
     if(!isHoriz.current&&Math.abs(dx)<6&&Math.abs(dy)<6)return;
     if(!isHoriz.current){isHoriz.current=Math.abs(dx)>Math.abs(dy);}
     if(!isHoriz.current)return;
     e.preventDefault();
     const now=Date.now(),dt=now-lastT.current;
     if(dt>0)vel.current=(e.touches[0].clientX-lastX.current)/dt;
-    lastX.current=e.touches[0].clientX; lastT.current=now;
+    lastX.current=e.touches[0].clientX;lastT.current=now;
     const atEdge=(currentIndex===0&&dx>0)||(currentIndex===songs.length-1&&dx<0);
-    const raw=atEdge?dx*0.18:dx;
-    setOffsetX(raw);
-    const p=-raw/W;
+    setOffsetX(atEdge?dx*0.18:dx);
+    const p=-(atEdge?dx*0.18:dx)/W;
     if(p>0.5&&currentIndex<songs.length-1)setOverlayIdx(currentIndex+1);
     else if(p<-0.5&&currentIndex>0)setOverlayIdx(currentIndex-1);
     else setOverlayIdx(currentIndex);
@@ -271,7 +457,7 @@ function PerformanceView({songs,currentIndex,onIndexChange,onExit,onUpdateSong})
   const onTE=()=>{
     if(settling||startX.current===null)return;
     startX.current=null;
-    const momentum=vel.current*120, eff=offsetX+momentum, thr=W*0.28;
+    const eff=offsetX+vel.current*120,thr=W*0.28;
     let target=currentIndex;
     if(eff<-thr&&currentIndex<songs.length-1)target=currentIndex+1;
     else if(eff>thr&&currentIndex>0)target=currentIndex-1;
@@ -285,20 +471,17 @@ function PerformanceView({songs,currentIndex,onIndexChange,onExit,onUpdateSong})
     <div style={{position:"fixed",inset:0,background:T.bg,zIndex:100,display:"flex",flexDirection:"column",overflow:"hidden"}}
       onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE}>
 
-      {/* Fixed overlay — never moves */}
       <div style={{position:"relative",zIndex:10,flexShrink:0}}>
-        {/* Header */}
         <div style={{paddingTop:"env(safe-area-inset-top, 12px)",background:T.surface,borderBottom:`1px solid ${T.border}`}}>
           <div style={{padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <button onClick={onExit} style={{background:"none",border:"none",color:T.textMuted,fontSize:13,cursor:"pointer",padding:"4px 0"}}>← Back</button>
             <div style={{display:"flex",gap:5,alignItems:"center"}}>
-              {songs.map((_,i)=><div key={i} style={{width:i===overlayIdx?18:6,height:6,borderRadius:3,background:i===overlayIdx?T.accent:T.border,transition:"width 0.25s ease, background 0.25s ease"}}/>)}
+              {songs.map((_,i)=><div key={i} style={{width:i===overlayIdx?18:6,height:6,borderRadius:3,background:i===overlayIdx?T.accent:T.border,transition:"width 0.25s ease,background 0.25s ease"}}/>)}
             </div>
             <div style={{fontFamily:T.mono,fontSize:12,color:T.textMuted}}>{overlayIdx+1}/{songs.length}</div>
           </div>
         </div>
 
-        {/* Song info — fades during swipe */}
         <div style={{padding:"12px 18px 10px",borderBottom:`1px solid ${T.borderLight}`,background:T.bg,opacity:overlayFade,transition:settling?"opacity 0.2s ease":"none"}}>
           <div style={{display:"flex",alignItems:"baseline",gap:10,flexWrap:"wrap"}}>
             <div style={{fontSize:21,fontWeight:600,color:T.text}}>{song.title}</div>
@@ -309,9 +492,7 @@ function PerformanceView({songs,currentIndex,onIndexChange,onExit,onUpdateSong})
               <div onClick={()=>setShowKeyPicker(p=>!p)} style={{...pill,background:T.accentBg,color:T.accent,borderColor:T.accentBorder,fontWeight:600}}>
                 Key of {liveKey||"?"}{song.key&&liveKey!==song.key?<span style={{opacity:0.5,fontWeight:400}}> ({song.key})</span>:null} ▾
               </div>
-              {showKeyPicker&&<div style={{position:"absolute",top:"calc(100% + 6px)",left:0,zIndex:300,background:T.surface,border:`1px solid ${T.border}`,borderRadius:10,padding:6,display:"grid",gridTemplateColumns:"repeat(4, 1fr)",gap:4,minWidth:180,boxShadow:"0 8px 24px rgba(0,0,0,0.5)"}}>
-                {KEYS.map(k=><button key={k} onClick={()=>handleKeyChange(k)} style={{background:k===liveKey?T.accent:T.bg,border:`1px solid ${k===liveKey?T.accent:T.border}`,borderRadius:6,padding:"7px 4px",color:k===liveKey?"#fff":T.text,fontSize:14,fontFamily:T.mono,cursor:"pointer"}}>{k}</button>)}
-              </div>}
+              {showKeyPicker&&<LiveKeyPicker value={liveKey} onChange={handleKeyChange} onClose={()=>setShowKeyPicker(false)}/>}
             </div>
             {song.tempo&&<div style={{...pill,color:T.textMuted,borderColor:T.border,cursor:"default"}}>{song.tempo}</div>}
             <button onClick={()=>setChordMode(m=>!m)} style={{...pill,background:chordMode?"rgba(99,102,241,0.15)":T.surface,color:chordMode?"#a5b4fc":T.textMuted,borderColor:chordMode?"rgba(99,102,241,0.35)":T.border}}>
@@ -336,19 +517,14 @@ function PerformanceView({songs,currentIndex,onIndexChange,onExit,onUpdateSong})
         </div>
       </div>
 
-      {/* Sliding strip */}
       <div style={{flex:1,overflow:"hidden",position:"relative"}}>
         <div style={{display:"flex",width:`${songs.length*100}%`,height:"100%",transform:`translateX(${stripX}px)`,transition:settling?"transform 0.3s cubic-bezier(0.25,1,0.5,1)":"none",willChange:"transform"}}>
-          {songs.map(s=>{
-            const lk=liveKeys[s.id]??s.key??"";
-            return <div key={s.id} style={{width:`${100/songs.length}%`,height:"100%",flexShrink:0}}><SongPanel song={s} chordMode={chordMode} liveKey={lk}/></div>;
-          })}
+          {songs.map(s=>{const lk=liveKeys[s.id]??s.key??"";return<div key={s.id} style={{width:`${100/songs.length}%`,height:"100%",flexShrink:0}}><SongPanel song={s} chordMode={chordMode} liveKey={lk}/></div>;})}
         </div>
       </div>
 
       {showKeyPicker&&<div onClick={()=>setShowKeyPicker(false)} style={{position:"fixed",inset:0,zIndex:200}}/>}
 
-      {/* Bottom nav */}
       <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"12px 16px",paddingBottom:"max(28px, env(safe-area-inset-bottom))",display:"flex",justifyContent:"space-between",alignItems:"center",background:`linear-gradient(to top, ${T.bg} 65%, transparent)`,zIndex:10}}>
         <button onClick={()=>{if(overlayIdx>0)commitSwipe(overlayIdx-1);}} disabled={overlayIdx===0} style={{background:overlayIdx===0?"transparent":T.surface,border:`1px solid ${overlayIdx===0?T.borderLight:T.border}`,borderRadius:10,padding:"11px 20px",color:overlayIdx===0?T.textFaint:T.textMuted,fontSize:14,cursor:overlayIdx===0?"default":"pointer"}}>← Prev</button>
         <div style={{fontSize:11,color:T.textFaint,fontFamily:T.mono}}>swipe or tap</div>
@@ -367,11 +543,12 @@ export default function App() {
   const [performing,setPerforming]=useState(false);
   const [perfIndex,setPerfIndex]=useState(0);
   const [modal,setModal]=useState(null);
+  const [previewSong,setPreviewSong]=useState(null);
   const [search,setSearch]=useState("");
   const [syncStatus,setSyncStatus]=useState("loading");
   const [lastSync,setLastSync]=useState(null);
   const syncTimer=useRef(null);
-  const firstSong=useRef(true), firstSetlist=useRef(true);
+  const firstSong=useRef(true),firstSetlist=useRef(true);
 
   useEffect(()=>{
     if(!unlocked)return;
@@ -380,7 +557,7 @@ export default function App() {
         const {songs:cs,setlist:csl}=await fetchFromCloud();
         if(cs&&cs.length>0)setSongs(cs);
         if(csl)setSetlist(csl.ids||[]);
-        setSyncStatus("synced"); setLastSync(new Date().toISOString());
+        setSyncStatus("synced");setLastSync(new Date().toISOString());
       }catch(e){setSyncStatus("error");}
     })();
   },[unlocked]);
@@ -423,6 +600,9 @@ export default function App() {
   };
   const deleteSong=id=>{setSongs(p=>p.filter(s=>s.id!==id));setSetlist(p=>p.filter(x=>x!==id));};
   const updateSong=(id,changes)=>setSongs(p=>p.map(s=>s.id===id?{...s,...changes}:s));
+
+  // Start live from a specific setlist index
+  const startFromIndex=i=>{setPerfIndex(i);setPerforming(true);};
 
   if(performing&&setlistSongs.length>0)return(
     <PerformanceView songs={setlistSongs} currentIndex={perfIndex}
@@ -467,7 +647,7 @@ export default function App() {
         {tab==="setlist"&&(
           setlistSongs.length===0
             ?<div style={{textAlign:"center",padding:"60px 0",color:T.textFaint}}><div style={{fontSize:32,marginBottom:10}}>♩</div><div style={{fontSize:14}}>No songs in setlist yet.</div><div style={{fontSize:13,marginTop:4}}>Go to Library to add songs.</div></div>
-            :setlistSongs.map((song,i)=><SetlistItem key={song.id} song={song} index={i} total={setlistSongs.length} onRemove={removeSong} onMoveUp={moveUp} onMoveDown={moveDown}/>)
+            :setlistSongs.map((song,i)=><SetlistItem key={song.id} song={song} index={i} total={setlistSongs.length} onRemove={removeSong} onMoveUp={moveUp} onMoveDown={moveDown} onTapToPlay={startFromIndex}/>)
         )}
         {tab==="library"&&(
           filtered.length===0
@@ -476,12 +656,12 @@ export default function App() {
               {grouped.map(({type,songs:gs})=>{const ts=TYPE_STYLES[type];return(
                 <div key={type} style={{marginBottom:8}}>
                   <div style={{fontSize:11,fontWeight:600,color:ts.color,fontFamily:T.mono,letterSpacing:"0.1em",textTransform:"uppercase",padding:"4px 0 8px",borderBottom:`1px solid ${ts.border}`,marginBottom:10}}>{type} — {gs.length}</div>
-                  {gs.map(song=><SongCard key={song.id} song={song} inSetlist={setlist.includes(song.id)} onToggle={toggleSong} onEdit={s=>setModal(s)}/>)}
+                  {gs.map(song=><SongCard key={song.id} song={song} inSetlist={setlist.includes(song.id)} onToggle={toggleSong} onPreview={setPreviewSong} onEdit={s=>setModal(s)}/>)}
                 </div>
               );})}
               {ungrouped.length>0&&<div>
                 <div style={{fontSize:11,color:T.textMuted,fontFamily:T.mono,letterSpacing:"0.1em",textTransform:"uppercase",padding:"4px 0 8px",borderBottom:`1px solid ${T.border}`,marginBottom:10}}>Other — {ungrouped.length}</div>
-                {ungrouped.map(song=><SongCard key={song.id} song={song} inSetlist={setlist.includes(song.id)} onToggle={toggleSong} onEdit={s=>setModal(s)}/>)}
+                {ungrouped.map(song=><SongCard key={song.id} song={song} inSetlist={setlist.includes(song.id)} onToggle={toggleSong} onPreview={setPreviewSong} onEdit={s=>setModal(s)}/>)}
               </div>}
             </>
         )}
@@ -490,7 +670,7 @@ export default function App() {
       {setlistSongs.length>0&&(
         <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"12px 16px",paddingBottom:"max(28px, env(safe-area-inset-bottom))",background:`linear-gradient(to top, ${T.bg} 70%, transparent)`}}>
           <div style={{maxWidth:560,margin:"0 auto"}}>
-            <button onClick={()=>{setPerfIndex(0);setPerforming(true);}} style={{width:"100%",background:T.accent,border:"none",borderRadius:12,padding:"14px",color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer"}}>
+            <button onClick={()=>startFromIndex(0)} style={{width:"100%",background:T.accent,border:"none",borderRadius:12,padding:"14px",color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer"}}>
               ▶ Go Live — {setlistSongs.length} {setlistSongs.length===1?"song":"songs"}
             </button>
           </div>
@@ -498,6 +678,7 @@ export default function App() {
       )}
 
       {modal&&<SongModal existing={modal==="add"?null:modal} onClose={()=>setModal(null)} onSave={saveSong} onDelete={deleteSong}/>}
+      {previewSong&&<SongPreviewModal song={previewSong} onClose={()=>setPreviewSong(null)} onUpdateSong={updateSong}/>}
     </div>
   );
 }
