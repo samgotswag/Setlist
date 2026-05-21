@@ -332,7 +332,7 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
         );
       })}
 
-      {/* Fixed-position ghost — locked to finger */}
+      {/* Fixed-position ghost — rendered outside any transform context */}
       {draggingId&&draggingSong&&(()=>{
         const W=containerRef.current?.getBoundingClientRect().width||340;
         const left=containerRef.current?.getBoundingClientRect().left||0;
@@ -344,16 +344,21 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
             width:W,
             zIndex:999,
             pointerEvents:"none",
-            transform:"scale(1.04) rotate(0.8deg)",
-            boxShadow:"0 12px 40px rgba(0,0,0,0.6)",
             borderRadius:10,
             transition:"none",
           }}>
-            <div style={{background:T.surface,border:`1.5px solid ${T.accent}`,borderRadius:10,padding:"11px 13px",display:"flex",alignItems:"center",gap:10}}>
-              <div style={{color:T.textFaint,fontSize:16,flexShrink:0}}>⠿</div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:14,fontWeight:500,color:T.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{draggingSong.title}</div>
-                <div style={{fontSize:11,color:T.accent,fontFamily:T.mono,marginTop:1}}>{draggingKeyDisplay}</div>
+            {/* Transform lives ONLY on this inner div — never on the fixed wrapper */}
+            <div style={{
+              transform:"scale(1.04) rotate(0.8deg)",
+              boxShadow:"0 12px 40px rgba(0,0,0,0.6)",
+              borderRadius:10,
+            }}>
+              <div style={{background:T.surface,border:`1.5px solid ${T.accent}`,borderRadius:10,padding:"11px 13px",display:"flex",alignItems:"center",gap:10}}>
+                <div style={{color:T.textFaint,fontSize:16,flexShrink:0}}>⠿</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:14,fontWeight:500,color:T.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{draggingSong.title}</div>
+                  <div style={{fontSize:11,color:T.accent,fontFamily:T.mono,marginTop:1}}>{draggingKeyDisplay}</div>
+                </div>
               </div>
             </div>
           </div>
