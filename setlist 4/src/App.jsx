@@ -349,7 +349,7 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
         return(
           <div style={{
             position:"fixed",
-            top:ghostY-touchOffsetInItem.current,
+            top:ghostY-28,
             left,
             width:W,
             zIndex:999,
