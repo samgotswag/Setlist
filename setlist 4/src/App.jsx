@@ -193,8 +193,6 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
   const startClientY=useRef(0);
   const isDragging=useRef(false);
   const activeId=useRef(null);
-  // How far from the top of the item the finger was when long-press fired
-  const touchOffsetInItem=useRef(0);
 
   // Sync if songs list changes externally
   useEffect(()=>{
@@ -215,10 +213,9 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
     return Math.max(0,Math.min(orderedSongs.length-1,Math.floor(relY/ROW_H)));
   };
 
-  const startDrag=(id,clientY,clientX,offsetInItem)=>{
+  const startDrag=(id,clientY,clientX)=>{
     isDragging.current=true;
     activeId.current=id;
-    touchOffsetInItem.current=offsetInItem;
     setDraggingId(id);
     setGhostY(clientY);
     setGhostX(clientX);
@@ -259,11 +256,7 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
   const onTouchStart=(id,e)=>{
     const t=e.touches[0];
     startClientY.current=t.clientY;
-    // Calculate finger offset within the item element
-    const itemEl=e.currentTarget;
-    const itemRect=itemEl.getBoundingClientRect();
-    const offsetInItem=t.clientY-itemRect.top;
-    longPressRef.current=setTimeout(()=>startDrag(id,t.clientY,t.clientX,offsetInItem),400);
+    longPressRef.current=setTimeout(()=>startDrag(id,t.clientY,t.clientX),400);
   };
   const onTouchMove=useCallback(e=>{
     if(!isDragging.current){clearTimeout(longPressRef.current);return;}
@@ -285,10 +278,7 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
   // Mouse handlers
   const onMouseDown=(id,e)=>{
     startClientY.current=e.clientY;
-    const itemEl=e.currentTarget;
-    const itemRect=itemEl.getBoundingClientRect();
-    const offsetInItem=e.clientY-itemRect.top;
-    longPressRef.current=setTimeout(()=>startDrag(id,e.clientY,e.clientX,offsetInItem),400);
+    longPressRef.current=setTimeout(()=>startDrag(id,e.clientY,e.clientX),400);
   };
   const onMouseMoveGlobal=useCallback(e=>{
     if(!isDragging.current){return;}
