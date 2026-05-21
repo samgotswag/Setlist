@@ -185,7 +185,7 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
   // orderedIds tracks current visual order
   const [orderedIds,setOrderedIds]=useState(()=>songs.map(s=>s.id));
   const [draggingId,setDraggingId]=useState(null);
-  const [ghostY,setGhostY]=useState(0);       // fixed Y for ghost
+  const [ghostY,setGhostY]=useState(0);       // fixed Y for ghost (tracks raw clientY)
   const [ghostX,setGhostX]=useState(0);       // fixed X for ghost
   const [placeholderIdx,setPlaceholderIdx]=useState(null);
   const containerRef=useRef(null);
@@ -193,12 +193,13 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
   const startClientY=useRef(0);
   const isDragging=useRef(false);
   const activeId=useRef(null);
+  // How far from the top of the item the finger was when long-press fired
+  const touchOffsetInItem=useRef(0);
 
   // Sync if songs list changes externally
   useEffect(()=>{
     setOrderedIds(prev=>{
       const newIds=songs.map(s=>s.id);
-      // preserve order for ids that still exist
       const kept=prev.filter(id=>newIds.includes(id));
       const added=newIds.filter(id=>!kept.includes(id));
       return [...kept,...added];
@@ -214,9 +215,10 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
     return Math.max(0,Math.min(orderedSongs.length-1,Math.floor(relY/ROW_H)));
   };
 
-  const startDrag=(id,clientY,clientX)=>{
+  const startDrag=(id,clientY,clientX,offsetInItem)=>{
     isDragging.current=true;
     activeId.current=id;
+    touchOffsetInItem.current=offsetInItem;
     setDraggingId(id);
     setGhostY(clientY);
     setGhostX(clientX);
@@ -257,7 +259,11 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
   const onTouchStart=(id,e)=>{
     const t=e.touches[0];
     startClientY.current=t.clientY;
-    longPressRef.current=setTimeout(()=>startDrag(id,t.clientY,t.clientX),400);
+    // Calculate finger offset within the item element
+    const itemEl=e.currentTarget;
+    const itemRect=itemEl.getBoundingClientRect();
+    const offsetInItem=t.clientY-itemRect.top;
+    longPressRef.current=setTimeout(()=>startDrag(id,t.clientY,t.clientX,offsetInItem),400);
   };
   const onTouchMove=useCallback(e=>{
     if(!isDragging.current){clearTimeout(longPressRef.current);return;}
@@ -279,7 +285,10 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
   // Mouse handlers
   const onMouseDown=(id,e)=>{
     startClientY.current=e.clientY;
-    longPressRef.current=setTimeout(()=>startDrag(id,e.clientY,e.clientX),400);
+    const itemEl=e.currentTarget;
+    const itemRect=itemEl.getBoundingClientRect();
+    const offsetInItem=e.clientY-itemRect.top;
+    longPressRef.current=setTimeout(()=>startDrag(id,e.clientY,e.clientX,offsetInItem),400);
   };
   const onMouseMoveGlobal=useCallback(e=>{
     if(!isDragging.current){return;}
@@ -340,7 +349,7 @@ function DraggableSetlist({songs,keyOverrides,onKeyChange,onRemove,onReorder,onT
         return(
           <div style={{
             position:"fixed",
-            top:ghostY-ROW_H/2,
+            top:ghostY-touchOffsetInItem.current,
             left,
             width:W,
             zIndex:999,
@@ -501,7 +510,7 @@ function SongPreviewModal({song,onClose,onUpdateSong}) {
 }
 
 // ─── Performance View ─────────────────────────────────────────────────────────
-function PerformanceView({songs,currentIndex,onIndexChange,onExit,onUpdateSong,keyOverrides}) {
+function PerformanceView({songs,currentIndex,onIndexChange,onExit,onUpdateSong,keyOverrides,onKeyOverrideChange}) {
   const W=window.innerWidth;
   const [offsetX,setOffsetX]=useState(0);
   const [settling,setSettling]=useState(false);
@@ -527,7 +536,7 @@ function PerformanceView({songs,currentIndex,onIndexChange,onExit,onUpdateSong,k
     setTimeout(()=>{onIndexChange(targetIdx);setOffsetX(0);setSettling(false);},300);
   },[currentIndex,W,onIndexChange]);
 
-  const handleKeyChange=k=>{setLocalKeys(p=>({...p,[song.id]:k}));setShowKeyPicker(false);};
+  const handleKeyChange=k=>{setLocalKeys(p=>({...p,[song.id]:k}));setShowKeyPicker(false);onKeyOverrideChange(song.id,k);};
   const saveNote=()=>{onUpdateSong(song.id,{note:liveNote});setEditingNote(false);};
   const stripX=-(currentIndex*W)+offsetX;
 
@@ -711,7 +720,7 @@ export default function App() {
   const grouped=TYPE_ORDER.map(type=>({type,songs:filtered.filter(s=>s.type===type).sort((a,b)=>a.title.localeCompare(b.title))})).filter(g=>g.songs.length>0);
   const ungrouped=filtered.filter(s=>!TYPE_ORDER.includes(s.type)).sort((a,b)=>a.title.localeCompare(b.title));
 
-  const toggleSong=id=>{setSetlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);if(!setlist.includes(id))setTabIndex(0);};
+  const toggleSong=id=>{setSetlist(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);};
   const removeSong=id=>{setSetlist(p=>p.filter(x=>x!==id));setKeyOverrides(p=>{const n={...p};delete n[id];return n;});};
   const saveSong=data=>{if(modal&&modal.id)setSongs(p=>p.map(s=>s.id===modal.id?{...s,...data}:s));else{const id=Date.now();setSongs(p=>[...p,{id,...data}]);}};
   const deleteSong=id=>{setSongs(p=>p.filter(s=>s.id!==id));setSetlist(p=>p.filter(x=>x!==id));};
@@ -721,7 +730,7 @@ export default function App() {
   const startFromIndex=i=>{setPerfIndex(i);setPerforming(true);};
 
   if(performing&&setlistSongs.length>0)return(
-    <PerformanceView songs={setlistSongs} currentIndex={perfIndex} onIndexChange={i=>setPerfIndex(i)} onExit={()=>setPerforming(false)} onUpdateSong={updateSong} keyOverrides={keyOverrides}/>
+    <PerformanceView songs={setlistSongs} currentIndex={perfIndex} onIndexChange={i=>setPerfIndex(i)} onExit={()=>setPerforming(false)} onUpdateSong={updateSong} keyOverrides={keyOverrides} onKeyOverrideChange={setKeyOverride}/>
   );
 
   const dot=syncStatus==="synced"?"#4ade80":syncStatus==="syncing"?"#f59e0b":syncStatus==="error"?"#f87171":T.textFaint;
@@ -755,13 +764,6 @@ export default function App() {
             </button>
           ))}
         </div>
-
-        {tabIndex===1&&<>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search songs…" style={{...inputStyle,marginBottom:12}}/>
-          <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-            {TYPE_ORDER.map(t=>{const ts=TYPE_STYLES[t];return<span key={t} style={{fontSize:11,color:ts.color,background:ts.bg,border:`1px solid ${ts.border}`,borderRadius:4,padding:"2px 8px",fontFamily:T.mono}}>{t}</span>;})}
-          </div>
-        </>}
       </div>
 
       {/* Swipeable tab content — finger tracked */}
@@ -799,6 +801,13 @@ export default function App() {
           {/* Library pane */}
           <div style={{width:"50%",height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
             <div style={{maxWidth:560,margin:"0 auto",padding:"0 16px 140px",boxSizing:"border-box"}}>
+              {/* Search + type pills — slides with the library */}
+              <div style={{paddingTop:4,paddingBottom:4}}>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search songs…" style={{...inputStyle,marginBottom:10}}/>
+                <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+                  {TYPE_ORDER.map(t=>{const ts=TYPE_STYLES[t];return<span key={t} style={{fontSize:11,color:ts.color,background:ts.bg,border:`1px solid ${ts.border}`,borderRadius:4,padding:"2px 8px",fontFamily:T.mono}}>{t}</span>;})}
+                </div>
+              </div>
               {filtered.length===0
                 ?<div style={{textAlign:"center",padding:"40px 0",color:T.textFaint,fontSize:14}}>No songs found.</div>
                 :<>
